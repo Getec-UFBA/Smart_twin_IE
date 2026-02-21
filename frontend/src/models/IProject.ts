@@ -28,7 +28,6 @@ export interface IOrthoResult {
   detections: IGeoDetection[];
 }
 
-// Nova interface IInspection (substitui IFolder)
 export interface IInspection {
   id: string; 
   inspectionType: string;

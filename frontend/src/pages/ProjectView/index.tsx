@@ -5,48 +5,7 @@ import { Container, Row, Col, Card, Button, Form, Modal, Alert } from 'react-boo
 import './style.css';
 import path from 'path-browserify';
 import { FaCog, FaPencilAlt } from 'react-icons/fa';
-
-interface IDetection {
-  class_name: string;
-  confidence: number;
-  box: { x1: number; y1: number; x2: number; y2: number };
-}
-
-interface IImage {
-  url: string;
-  detections?: IDetection[];
-}
-
-interface IInspection {
-  id: string;
-  inspectionType: string;
-  inspectionObjective: string;
-  inspectionDate: string;
-  inspectionResponsible: string;
-  images: IImage[];
-}
-
-interface IProject {
-  id: string;
-  name: string;
-  responsible: string;
-  address: string;
-  type: string;
-  buildingYear?: string;
-  builtArea?: string;
-  facadeTypology?: string;
-  roofTypology?: string;
-  buildingAcronym?: string;
-  unitDirector?: string;
-  coverImageUrl: string;
-  bimModelUrl: string;
-  modules: {
-    progress: boolean;
-    security: boolean;
-    maintenance: boolean;
-  };
-  inspections?: IInspection[];
-}
+import type { IProject, IInspection, IImage, IOrthoResult } from '../../models/IProject';
 
 const ProjectView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -56,6 +15,8 @@ const ProjectView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [processing, setProcessing] = useState(false);
+  const [processingType, setProcessingType] = useState<'images' | 'ortho'>('images');
+  const [targetInspectionId, setTargetInspectionId] = useState<string>('');
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const [newInspectionObjective, setNewInspectionObjective] = useState('');
   const [inspectionType, setInspectionType] = useState('Preventiva');
@@ -64,6 +25,7 @@ const ProjectView: React.FC = () => {
   const [showCreateInspectionModal, setShowCreateInspectionModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState<boolean>(false);
   const [selectedInspectionImages, setSelectedInspectionImages] = useState<IImage[]>([]);
+  const [selectedInspectionOrthoResults, setSelectedInspectionOrthoResults] = useState<IOrthoResult[]>([]);
   const [selectedInspectionObjective, setSelectedInspectionObjective] = useState<string>('');
   const [selectedInspectionId, setSelectedInspectionId] = useState<string | null>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
@@ -71,179 +33,6 @@ const ProjectView: React.FC = () => {
   const [editFormData, setEditFormData] = useState<Partial<IProject>>({});
   const [showEditInspectionModal, setShowEditInspectionModal] = useState(false);
   const [editingInspection, setEditingInspection] = useState<IInspection | null>(null);
-
-  const handleInspectionClick = (inspection: IInspection) => {
-    setSelectedInspectionImages(inspection.images);
-    setSelectedInspectionObjective(inspection.inspectionObjective);
-    setSelectedInspectionId(inspection.id);
-    setShowImageModal(true);
-  };
-
-  const handleUpdateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!project?.id) return;
-
-    try {
-      const response = await api.put(`/projects/${project.id}`, editFormData);
-      setProject(response.data);
-      fetchProject();
-      setShowEditModal(false);
-      alert('Projeto atualizado com sucesso!');
-    } catch (err) {
-      console.error('Erro ao atualizar o projeto:', err);
-      const errorMessage = (err as any).response?.data?.error || 'Erro desconhecido';
-      setError(`Erro ao atualizar o projeto: ${errorMessage}`);
-    }
-  };
-
-  const openEditModal = () => {
-    if (project) {
-      setEditFormData({
-        name: project.name,
-        address: project.address,
-        type: project.type,
-        responsible: project.responsible,
-        buildingYear: project.buildingYear,
-        builtArea: project.builtArea,
-        facadeTypology: project.facadeTypology,
-        roofTypology: project.roofTypology,
-        buildingAcronym: project.buildingAcronym,
-        unitDirector: project.unitDirector,
-      });
-    }
-    setShowEditModal(true);
-  };
-
-  const openEditInspectionModal = (inspection: IInspection) => {
-    setEditingInspection(inspection);
-    setShowEditInspectionModal(true);
-  };
-
-  const handleUpdateInspection = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!project || !editingInspection) return;
-
-    const updatedInspections = project.inspections?.map(insp =>
-      insp.id === editingInspection.id ? editingInspection : insp
-    );
-
-    try {
-      await api.put(`/projects/${project.id}`, { inspections: updatedInspections });
-      setShowEditInspectionModal(false);
-      setEditingInspection(null);
-      fetchProject();
-      alert('Inspeção atualizada com sucesso!');
-    } catch (err) {
-      console.error('Erro ao atualizar a inspeção:', err);
-      setError('Erro ao atualizar a inspeção.');
-    }
-  };
-
-  const handleCreateInspection = async () => {
-    if (!project?.id || !newInspectionObjective.trim()) {
-      setError('ID do projeto e objetivo da inspeção são obrigatórios.');
-      return;
-    }
-    if (!inspectionDate) {
-      setError('Data da inspeção é obrigatória.');
-      return;
-    }
-    if (!inspectionResponsible.trim()) {
-      setError('Responsável pela inspeção é obrigatório.');
-      return;
-    }
-
-    try {
-      await api.post(`/projects/${project.id}/inspections`, {
-        inspectionType,
-        inspectionObjective: newInspectionObjective,
-        inspectionDate,
-        inspectionResponsible,
-      });
-      alert(`Inspeção "${newInspectionObjective}" criada com sucesso!`);
-      setNewInspectionObjective('');
-      setInspectionType('Preventiva');
-      setInspectionDate('');
-      setInspectionResponsible('');
-      setShowCreateInspectionModal(false);
-      fetchProject();
-    } catch (err) {
-      console.error('Erro ao criar inspeção:', err);
-      const errorMessage = (err as any).response?.data?.error || 'Erro desconhecido';
-      setError(`Erro ao criar inspeção: ${errorMessage}`);
-      alert(`Erro ao criar inspeção: ${errorMessage}`);
-    }
-  };
-
-  const handleDeleteInspection = async (inspectionId: string) => {
-    if (!project?.id) {
-      setError('ID do projeto ausente.');
-      return;
-    }
-
-    if (window.confirm('Tem certeza que deseja excluir esta inspeção e todas as suas imagens?')) {
-      try {
-        await api.delete(`/projects/${project.id}/inspections/${inspectionId}`);
-        alert('Inspeção excluída com sucesso!');
-        fetchProject();
-        if (showImageModal && selectedInspectionId === inspectionId) {
-          setShowImageModal(false);
-          setSelectedInspectionImages([]);
-          setSelectedInspectionObjective('');
-        }
-      } catch (err) {
-        console.error('Erro ao excluir inspeção:', err);
-        setError('Erro ao excluir inspeção.');
-      }
-    }
-  };
-
-  const handleDeleteImageFromInspection = async (imageUrl: string, inspectionId: string) => {
-    if (!project?.id) {
-      setError('ID do projeto ausente.');
-      return;
-    }
-
-    if (window.confirm('Tem certeza que deseja excluir esta imagem desta inspeção?')) {
-      try {
-        const imageName = path.basename(imageUrl);
-        await api.delete(`/projects/${project.id}/inspections/${inspectionId}/images/${imageName}`);
-        alert('Imagem excluída com sucesso da inspeção!');
-        fetchProject();
-        if (showImageModal && selectedInspectionId === inspectionId) {
-          setSelectedInspectionImages(prevImages => prevImages.filter(img => img.url !== imageUrl));
-        }
-      } catch (err) {
-        console.error('Erro ao excluir imagem da inspeção:', err);
-        setError('Erro ao excluir imagem da inspeção.');
-      }
-    }
-  };
-
-  const handleProcessImages = async () => {
-    if (selectedFiles.length === 0 || !project) return;
-
-    setProcessing(true);
-    setError(null);
-    const formData = new FormData();
-    selectedFiles.forEach(file => {
-      formData.append('images', file);
-    });
-
-    try {
-      const response = await api.post('/projects/process-images', formData);
-      setSelectedFiles([]);
-      alert('Imagens enviadas para revisão!');
-      navigate(`/review/${response.data.reviewId}`);
-    } catch (err) {
-      console.error('Erro ao processar imagens:', err);
-      const errorMessage = (err as any).response?.data?.error || 'Erro desconhecido ao processar imagens.';
-      setError(errorMessage);
-      alert(`Ocorreu um erro ao enviar as imagens: ${errorMessage}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   const fetchProject = useCallback(async () => {
     try {
@@ -256,6 +45,174 @@ const ProjectView: React.FC = () => {
       setLoading(false);
     }
   }, [id]);
+
+  const openEditModal = () => {
+    if (project) {
+      setEditFormData({
+        name: project.name,
+        address: project.address,
+        type: project.type,
+        responsible: project.responsible,
+      });
+      setShowEditModal(true);
+    }
+  };
+
+  const handleUpdateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project) return;
+
+    try {
+      await api.put(`/projects/${project.id}`, editFormData);
+      setShowEditModal(false);
+      fetchProject();
+      alert('Projeto atualizado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao atualizar projeto:', err);
+      alert('Erro ao atualizar projeto.');
+    }
+  };
+
+  const openEditInspectionModal = (inspection: IInspection) => {
+    setEditingInspection({ ...inspection });
+    setShowEditInspectionModal(true);
+  };
+
+  const handleUpdateInspection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project || !editingInspection) return;
+
+    try {
+      // Como não há rota específica para update de inspeção, usamos a de update do projeto
+      // enviando a lista de inspeções atualizada
+      const updatedInspections = project.inspections?.map(insp => 
+        insp.id === editingInspection.id ? editingInspection : insp
+      );
+
+      await api.put(`/projects/${project.id}`, {
+        inspections: updatedInspections
+      });
+
+      setShowEditInspectionModal(false);
+      fetchProject();
+      alert('Inspeção atualizada com sucesso!');
+    } catch (err) {
+      console.error('Erro ao atualizar inspeção:', err);
+      alert('Erro ao atualizar inspeção.');
+    }
+  };
+
+  const handleCreateInspection = async () => {
+    if (!project) return;
+
+    try {
+      await api.post(`/projects/${project.id}/inspections`, {
+        inspectionType,
+        inspectionObjective: newInspectionObjective,
+        inspectionDate,
+        inspectionResponsible,
+      });
+
+      setShowCreateInspectionModal(false);
+      setNewInspectionObjective('');
+      setInspectionDate('');
+      setInspectionResponsible('');
+      fetchProject();
+      alert('Inspeção criada com sucesso!');
+    } catch (err) {
+      console.error('Erro ao criar inspeção:', err);
+      alert('Erro ao criar inspeção.');
+    }
+  };
+
+  const handleDeleteInspection = async (inspectionId: string) => {
+    if (!project) return;
+
+    if (!window.confirm('Tem certeza que deseja excluir esta inspeção?')) return;
+
+    try {
+      await api.delete(`/projects/${project.id}/inspections/${inspectionId}`);
+      fetchProject();
+      alert('Inspeção excluída com sucesso!');
+    } catch (err) {
+      console.error('Erro ao excluir inspeção:', err);
+      alert('Erro ao excluir inspeção.');
+    }
+  };
+
+  const handleDeleteImageFromInspection = async (imageUrl: string, inspectionId: string) => {
+    if (!project) return;
+
+    if (!window.confirm('Tem certeza que deseja excluir esta imagem?')) return;
+
+    try {
+      const imageName = path.basename(imageUrl);
+      await api.delete(`/projects/${project.id}/inspections/${inspectionId}/images/${imageName}`);
+      
+      // Atualizar o estado local para refletir a exclusão sem precisar de um fetch total
+      if (selectedInspectionId === inspectionId) {
+        setSelectedInspectionImages(prev => prev.filter(img => img.url !== imageUrl));
+      }
+      
+      fetchProject();
+    } catch (err) {
+      console.error('Erro ao excluir imagem:', err);
+      alert('Erro ao excluir imagem.');
+    }
+  };
+
+  const handleInspectionClick = (inspection: IInspection) => {
+    setSelectedInspectionImages(inspection.images);
+    setSelectedInspectionOrthoResults(inspection.orthoResults || []);
+    setSelectedInspectionObjective(inspection.inspectionObjective);
+    setSelectedInspectionId(inspection.id);
+    setShowImageModal(true);
+  };
+
+  const handleProcess = async () => {
+    if (selectedFiles.length === 0 || !project) return;
+
+    if (processingType === 'ortho' && !targetInspectionId) {
+      alert('Por favor, selecione uma inspeção para salvar o ortomosaico.');
+      return;
+    }
+
+    setProcessing(true);
+    setError(null);
+    const formData = new FormData();
+
+    try {
+      if (processingType === 'images') {
+        selectedFiles.forEach(file => {
+          formData.append('images', file);
+        });
+        const response = await api.post('/projects/process-images', formData);
+        setSelectedFiles([]);
+        alert('Imagens enviadas para revisão!');
+        navigate(`/review/${response.data.reviewId}`);
+      } else {
+        formData.append('ortho', selectedFiles[0]);
+        formData.append('projectId', project.id);
+        formData.append('inspectionId', targetInspectionId);
+
+        await api.post('/projects/process-ortho', formData, {
+          timeout: 0, // Sem timeout para ortomosaicos grandes
+        });
+        
+        setSelectedFiles([]);
+        setTargetInspectionId('');
+        alert('Ortomosaico processado e salvo com sucesso!');
+        fetchProject();
+      }
+    } catch (err) {
+      console.error('Erro ao processar:', err);
+      const errorMessage = (err as any).response?.data?.error || 'Erro desconhecido ao processar.';
+      setError(errorMessage);
+      alert(`Ocorreu um erro: ${errorMessage}`);
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -374,42 +331,82 @@ const ProjectView: React.FC = () => {
         <Col md={8}>
           <Card>
             <Card.Body>
-              <Card.Title>Processamento de Imagens</Card.Title>
+              <Card.Title>Processamento com IA</Card.Title>
+              
+              <Form.Group className="mb-3">
+                <Form.Label>Tipo de Processamento</Form.Label>
+                <div>
+                  <Form.Check
+                    inline
+                    label="Imagens de Inspeção"
+                    type="radio"
+                    name="processingType"
+                    checked={processingType === 'images'}
+                    onChange={() => {
+                      setProcessingType('images');
+                      setSelectedFiles([]);
+                    }}
+                  />
+                  <Form.Check
+                    inline
+                    label="Ortomosaico (GeoTIFF)"
+                    type="radio"
+                    name="processingType"
+                    checked={processingType === 'ortho'}
+                    onChange={() => {
+                      setProcessingType('ortho');
+                      setSelectedFiles([]);
+                    }}
+                  />
+                </div>
+              </Form.Group>
+
+              {processingType === 'ortho' && (
+                <Form.Group className="mb-3">
+                  <Form.Label>Salvar na Inspeção</Form.Label>
+                  <Form.Select 
+                    value={targetInspectionId} 
+                    onChange={e => setTargetInspectionId(e.target.value)}
+                    required
+                  >
+                    <option value="">Selecione uma inspeção...</option>
+                    {project.inspections?.map(insp => (
+                      <option key={insp.id} value={insp.id}>
+                        {insp.inspectionObjective}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              )}
+
               <div className="image-input-group">
-                <Form.Group controlId="formFile" className="mb-3">
+                <Form.Group controlId="formFile" className="mb-3" style={{ flex: 1 }}>
                   <Form.Label>
-                    Selecionar Imagens ou Pasta ({selectedFiles.length} {selectedFiles.length === 1 ? 'arquivo' : 'arquivos'} selecionados)
+                    {processingType === 'images' 
+                      ? `Selecionar Imagens (${selectedFiles.length} arquivos)` 
+                      : 'Selecionar GeoTIFF (.tif, .tiff)'}
                   </Form.Label>
                   <Form.Control 
                     type="file" 
                     onChange={handleFileChange} 
-                    multiple 
-                    directory="" 
-                    webkitdirectory="" 
+                    multiple={processingType === 'images'}
+                    accept={processingType === 'images' ? "image/*" : ".tif,.tiff,.jpg,.jpeg"}
                   />
                 </Form.Group>
                 <Button
                   variant="success"
-                  onClick={handleProcessImages}
-                  disabled={selectedFiles.length === 0 || processing}
-                  style={{ marginLeft: '1rem' }}
+                  onClick={handleProcess}
+                  disabled={selectedFiles.length === 0 || processing || (processingType === 'ortho' && !targetInspectionId)}
+                  style={{ marginLeft: '1rem', alignSelf: 'center' }}
                 >
-                  {processing ? 'Processando...' : 'Processar Imagens'}
+                  {processing ? 'Processando...' : processingType === 'images' ? 'Processar Imagens' : 'Processar Ortomosaico/JPEG'}
                 </Button>
               </div>
 
-              {lastBatchId && (
-                <div className="mt-3">
-                  <Alert variant="success">
-                    Imagens enviadas para processamento!
-                  </Alert>
-                  <Button
-                    variant="primary"
-                    onClick={() => navigate(`/projetos/${project.id}/results/${lastBatchId}`)}
-                  >
-                    Ver Imagens Processadas
-                  </Button>
-                </div>
+              {processing && processingType === 'ortho' && (
+                <Alert variant="info" className="mt-3">
+                  O processamento de ortomosaicos pode levar alguns minutos. Por favor, aguarde...
+                </Alert>
               )}
             </Card.Body>
           </Card>
@@ -537,9 +534,35 @@ const ProjectView: React.FC = () => {
 
       <Modal show={showImageModal} onHide={() => setShowImageModal(false)} size="lg" className="image-modal">
         <Modal.Header closeButton>
-          <Modal.Title>Imagens em "{selectedInspectionObjective}"</Modal.Title>
+          <Modal.Title>Detalhes da Inspeção: "{selectedInspectionObjective}"</Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {/* Seção de Ortomosaicos */}
+          {selectedInspectionOrthoResults && selectedInspectionOrthoResults.length > 0 && (
+            <div className="mb-4">
+              <h5>Ortomosaicos Processados</h5>
+              {selectedInspectionOrthoResults.map((ortho, index) => (
+                <Alert variant="info" key={index} className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>{path.basename(ortho.url)}</strong>
+                    <br />
+                    <small>{ortho.detections.length} patologias detectadas via georreferenciamento.</small>
+                  </div>
+                  <Button 
+                    variant="outline-primary" 
+                    size="sm"
+                    onClick={() => window.open(`http://localhost:3001${ortho.url}`, '_blank')}
+                  >
+                    Baixar GeoTIFF
+                  </Button>
+                </Alert>
+              ))}
+              <hr />
+            </div>
+          )}
+
+          {/* Seção de Imagens Comuns */}
+          <h5>Imagens de Inspeção</h5>
           {selectedInspectionImages.length > 0 ? (
             <Row>
               {selectedInspectionImages.map((image, index) => (
@@ -578,7 +601,7 @@ const ProjectView: React.FC = () => {
               ))}
             </Row>
           ) : (
-            <p>Nenhuma imagem nesta inspeção.</p>
+            <p className="text-muted">Nenhuma imagem comum nesta inspeção.</p>
           )}
         </Modal.Body>
         <Modal.Footer>

@@ -23,6 +23,13 @@ projectRouter.post(
   projectController.processImagesForResults
 );
 
+// Route to process a single orthomosaic (GeoTIFF)
+projectRouter.post(
+  '/process-ortho',
+  upload.single('ortho'),
+  projectController.processOrthoForResults
+);
+
 // Route to get the data for a pending review
 projectRouter.get(
   '/review/:reviewId',

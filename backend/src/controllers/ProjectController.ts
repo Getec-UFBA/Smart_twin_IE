@@ -188,6 +188,59 @@ class ProjectController {
     }
   }
 
+  public processOrthoForResults = async (req: AuthRequest, res: Response): Promise<Response> => {
+    const file = req.file;
+    const { projectId, inspectionId } = req.body;
+
+    if (!file) {
+      return res.status(400).json({ error: 'Nenhum arquivo GeoTIFF enviado.' });
+    }
+
+    if (!projectId || !inspectionId) {
+      return res.status(400).json({ error: 'ID do projeto e ID da inspeção são obrigatórios.' });
+    }
+
+    const imageProcessingService = new ImageProcessingService();
+    const projectService = new ProjectService();
+
+    try {
+      const { detections } = await imageProcessingService.processOrtho(file.path);
+      
+      // Salva o arquivo original na pasta do projeto
+      const finalFileName = `${randomUUID()}${path.extname(file.originalname)}`;
+      const finalDir = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId);
+      await fs.mkdir(finalDir, { recursive: true });
+      const finalPath = path.join(finalDir, finalFileName);
+      
+      await fs.rename(file.path, finalPath);
+
+      const orthoResult = {
+        url: `/files/projects/${projectId}/${inspectionId}/${finalFileName}`,
+        detections: detections,
+      };
+
+      await projectService.addOrthoResultsToInspection({
+        projectId,
+        inspectionId,
+        orthoResults: [orthoResult],
+      });
+
+      return res.status(200).json({
+        message: 'Ortomosaico processado com sucesso.',
+        detections_count: detections.length,
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Error processing ortho ${file.originalname}:`, error);
+      return res.status(500).json({ error: `Falha ao processar ortomosaico: ${errorMessage}` });
+    } finally {
+      if (file && file.path) {
+        await fs.unlink(file.path).catch(() => {});
+      }
+    }
+  }
+
   private getProcessedImageData = async (imagePath: string, imageProcessingService: ImageProcessingService): Promise<{ processedImageBase64: string; detections: IDetection[] }> => {
     try {
       const processedImageResponse = await imageProcessingService.processImage(imagePath);

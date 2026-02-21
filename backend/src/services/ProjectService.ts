@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import uploadConfig from '../config/upload';
 import ProjectRepository from '../repositories/ProjectRepository';
-import { IProject, IOAE, IInspection, IDetection, IImage } from '../models/IProject'; // Importar IInspection, IDetection, IImage
+import { IProject, IOAE, IInspection, IDetection, IImage, IOrthoResult } from '../models/IProject';
 
 interface IFile {
   fieldname: string;
@@ -87,10 +87,8 @@ class ProjectService {
     const oaeBimModelFiles = files.filter(f => f.fieldname === 'oaeBimModel[]');
 
     const oaeWithFiles: IOAE[] = parsedOaes.map((oae: any, index: number) => {
-      // Pega o arquivo correspondente na ordem
       const oaeFile = oaeBimModelFiles[index];
       if (!oaeFile) {
-        // Isso pode acontecer se o número de arquivos enviados não corresponder ao número de OAEs
         throw new Error(`Arquivo BIM não encontrado para a OAE: ${oae.name}`);
       }
       return {
@@ -100,12 +98,8 @@ class ProjectService {
       };
     });
 
-    // Verificação adicional para garantir que todos os arquivos foram usados
     if (parsedOaes.length !== oaeBimModelFiles.length) {
-      // Isso pode indicar uma inconsistência entre os dados do formulário e os arquivos enviados
       console.warn('O número de OAEs e de modelo BIM não corresponde.');
-      // Dependendo da regra de negócio, você pode querer lançar um erro aqui
-      // throw new Error('Inconsistência nos dados das OAEs.');
     }
 
     const newProject: IProject = {
@@ -121,7 +115,6 @@ class ProjectService {
       oae: oaeWithFiles,
     };
 
-    // Adicionar campos de manutenção se o módulo estiver ativo
     if (parsedModules.maintenance) {
       newProject.buildingYear = buildingYear;
       newProject.builtArea = builtArea;
@@ -173,18 +166,17 @@ class ProjectService {
       inspectionObjective,
       inspectionDate,
       inspectionResponsible,
-      images: [], // Inspeção começa sem imagens
+      images: [],
     };
 
     const updatedInspections = project.inspections ? [...project.inspections, newInspection] : [newInspection];
 
     await this.projectRepository.update(projectId, { inspections: updatedInspections });
 
-    // Criar pasta no sistema de arquivos para armazenar imagens da inspeção
     const inspectionPath = path.resolve(
-      uploadConfig.projectsDirectory, // Base path
+      uploadConfig.projectsDirectory,
       projectId,
-      newInspection.id // Usar o ID da inspeção como nome da pasta
+      newInspection.id
     );
     await fs.mkdir(inspectionPath, { recursive: true });
 
@@ -212,6 +204,32 @@ class ProjectService {
 
     if (!updatedProject) {
       throw new Error('Falha ao adicionar imagens à inspeção.');
+    }
+
+    return updatedProject;
+  }
+
+  public async addOrthoResultsToInspection({ projectId, inspectionId, orthoResults }: { projectId: string; inspectionId: string; orthoResults: IOrthoResult[] }): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+
+    if (!project) {
+      throw new Error('Projeto não encontrado.');
+    }
+
+    const updatedInspections = project.inspections?.map(inspection => {
+      if (inspection.id === inspectionId) {
+        return {
+          ...inspection,
+          orthoResults: [...(inspection.orthoResults || []), ...orthoResults],
+        };
+      }
+      return inspection;
+    }) || [];
+
+    const updatedProject = await this.projectRepository.update(projectId, { inspections: updatedInspections });
+
+    if (!updatedProject) {
+      throw new Error('Falha ao adicionar resultados de ortomosaico à inspeção.');
     }
 
     return updatedProject;
