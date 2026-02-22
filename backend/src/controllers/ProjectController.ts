@@ -204,18 +204,28 @@ class ProjectController {
     const projectService = new ProjectService();
 
     try {
-      const { detections } = await imageProcessingService.processOrtho(file.path);
+      // 1. Processa no serviço de IA
+      const { detections, annotated_ortho_url, preview_url } = await imageProcessingService.processOrtho(file.path);
       
-      // Salva o arquivo original na pasta do projeto
-      const finalFileName = `${randomUUID()}${path.extname(file.originalname)}`;
+      const requestUuid = randomUUID();
       const finalDir = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId);
       await fs.mkdir(finalDir, { recursive: true });
-      const finalPath = path.join(finalDir, finalFileName);
-      
-      await fs.rename(file.path, finalPath);
+
+      // 2. Baixa o GeoTIFF anotado e salva
+      const annotatedBuffer = await imageProcessingService.downloadFile(annotated_ortho_url);
+      const finalOrthoName = `${requestUuid}_annotated${path.extname(file.originalname)}`;
+      const finalOrthoPath = path.join(finalDir, finalOrthoName);
+      await fs.writeFile(finalOrthoPath, annotatedBuffer);
+
+      // 3. Baixa a imagem de pré-visualização e salva
+      const previewBuffer = await imageProcessingService.downloadFile(preview_url);
+      const finalPreviewName = `${requestUuid}_preview.jpg`;
+      const finalPreviewPath = path.join(finalDir, finalPreviewName);
+      await fs.writeFile(finalPreviewPath, previewBuffer);
 
       const orthoResult = {
-        url: `/files/projects/${projectId}/${inspectionId}/${finalFileName}`,
+        url: `/files/projects/${projectId}/${inspectionId}/${finalOrthoName}`,
+        previewUrl: `/files/projects/${projectId}/${inspectionId}/${finalPreviewName}`,
         detections: detections,
       };
 
@@ -228,6 +238,7 @@ class ProjectController {
       return res.status(200).json({
         message: 'Ortomosaico processado com sucesso.',
         detections_count: detections.length,
+        preview_url: orthoResult.previewUrl
       });
 
     } catch (error) {

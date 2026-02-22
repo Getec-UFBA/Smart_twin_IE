@@ -25,6 +25,9 @@ interface IProcessOrthoResponse {
   filename: string;
   detections_count: number;
   detections: IGeoDetection[];
+  preview_base64: string;
+  annotated_ortho_url: string;
+  preview_url: string;
 }
 
 class ImageProcessingService {
@@ -32,6 +35,18 @@ class ImageProcessingService {
 
   constructor() {
     this.pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+  }
+
+  public async downloadFile(fileUrl: string): Promise<Buffer> {
+    try {
+      const response = await axios.get(`${this.pythonServiceUrl}${fileUrl}`, {
+        responseType: 'arraybuffer',
+      });
+      return Buffer.from(response.data);
+    } catch (error) {
+      console.error(`Error downloading file from ${fileUrl}:`, error);
+      throw new Error('Failed to download file from Python service.');
+    }
   }
 
   public async processImage(imagePath: string): Promise<IProcessImageResponse> {

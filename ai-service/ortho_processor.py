@@ -3,14 +3,119 @@ from rasterio.windows import Window
 import numpy as np
 from ultralytics import YOLO
 import os
+import cv2
 from shapely.geometry import box
 from shapely.ops import unary_union
+import shutil
 
 class OrthoProcessor:
     def __init__(self, model_path, tile_size=1024, overlap=200):
         self.model = YOLO(model_path, task='detect')
         self.tile_size = tile_size
         self.overlap = overlap
+
+    def _draw_on_image(self, img, detections_in_tile, offset_x=0, offset_y=0, scale=1.0):
+        """
+        Desenha as caixas e textos em uma imagem (numpy array).
+        """
+        for d in detections_in_tile:
+            pb = d["pixel_box"]
+            x1 = int((pb["x1"] - offset_x) * scale)
+            y1 = int((pb["y1"] - offset_y) * scale)
+            x2 = int((pb["x2"] - offset_x) * scale)
+            y2 = int((pb["y2"] - offset_y) * scale)
+            
+            conf = d["confidence"]
+            label = f"{d['class_name']} {conf:.2f}"
+            
+            # Cor: Vermelho para defeitos
+            color = (0, 0, 255) # BGR
+            thickness = max(1, int(3 * scale))
+            
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
+            
+            font_scale = 0.8 * scale
+            font_thickness = max(1, int(2 * scale))
+            (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thickness)
+            
+            cv2.rectangle(img, (x1, y1 - h - 10), (x1 + w, y1), color, -1)
+            cv2.putText(img, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), font_thickness)
+        
+        return img
+
+    def save_annotated_ortho(self, input_path, output_path, detections):
+        """
+        Cria uma cópia do GeoTIFF e desenha as detecções nele.
+        """
+        if not detections:
+            shutil.copy(input_path, output_path)
+            return
+
+        print(f"[IA] Gerando ortomosaico anotado: {output_path}")
+        # Copia o arquivo original para o destino para manter todos os metadados e estrutura
+        shutil.copy(input_path, output_path)
+        
+        # Abre o arquivo de saída em modo leitura/escrita
+        with rasterio.open(output_path, "r+") as dst:
+            # Agrupa detecções por "área" para minimizar operações de escrita
+            # Mas para simplificar e garantir precisão, vamos desenhar cada detecção individualmente
+            # lendo apenas o pedaço necessário.
+            for d in detections:
+                pb = d["pixel_box"]
+                # Adiciona uma margem para o texto não ser cortado
+                margin = 50
+                x1 = max(0, int(pb["x1"]) - margin)
+                y1 = max(0, int(pb["y1"]) - margin)
+                x2 = min(dst.width, int(pb["x2"]) + margin)
+                y2 = min(dst.height, int(pb["y2"]) + margin)
+                
+                win = Window(x1, y1, x2 - x1, y2 - y1)
+                
+                # Lê os dados (RGB)
+                img_data = dst.read([1, 2, 3], window=win)
+                # Transpõe para HWC
+                img = np.moveaxis(img_data, 0, -1).copy()
+                
+                # Desenha
+                self._draw_on_image(img, [d], offset_x=x1, offset_y=y1)
+                
+                # Transpõe de volta para CHW
+                out_data = np.moveaxis(img, -1, 0)
+                # Escreve de volta
+                dst.write(out_data, [1, 2, 3], window=win)
+
+    def generate_preview(self, tiff_path, output_path, detections, max_dim=2048):
+        """
+        Gera um JPEG de pré-visualização em baixa resolução.
+        """
+        print(f"[IA] Gerando imagem de pré-visualização: {output_path}")
+        with rasterio.open(tiff_path) as src:
+            width = src.width
+            height = src.height
+            
+            # Calcula escala para o preview
+            scale = max_dim / max(width, height)
+            if scale > 1.0: scale = 1.0
+            
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            
+            # Lê a imagem inteira com o tamanho reduzido (decimation)
+            img_data = src.read(
+                [1, 2, 3],
+                out_shape=(3, new_height, new_width),
+                resampling=rasterio.enums.Resampling.bilinear
+            )
+            
+            img = np.moveaxis(img_data, 0, -1).copy()
+            
+            # Desenha todas as detecções na imagem escalonada
+            if detections:
+                self._draw_on_image(img, detections, scale=scale)
+            
+            # Converte BGR -> RGB para salvar corretamente se usar PIL, mas OpenCV salva em BGR
+            # Como usamos cv2.imwrite, mantemos BGR (que é o que o _draw_on_image produz)
+            cv2.imwrite(output_path, img, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
 
     def _apply_nms(self, detections, iou_threshold=0.5):
         if not detections:

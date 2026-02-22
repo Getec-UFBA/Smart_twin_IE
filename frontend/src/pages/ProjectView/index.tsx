@@ -541,22 +541,40 @@ const ProjectView: React.FC = () => {
           {selectedInspectionOrthoResults && selectedInspectionOrthoResults.length > 0 && (
             <div className="mb-4">
               <h5>Ortomosaicos Processados</h5>
-              {selectedInspectionOrthoResults.map((ortho, index) => (
-                <Alert variant="info" key={index} className="d-flex justify-content-between align-items-center">
-                  <div>
-                    <strong>{path.basename(ortho.url)}</strong>
-                    <br />
-                    <small>{ortho.detections.length} patologias detectadas via georreferenciamento.</small>
-                  </div>
-                  <Button 
-                    variant="outline-primary" 
-                    size="sm"
-                    onClick={() => window.open(`http://localhost:3001${ortho.url}`, '_blank')}
-                  >
-                    Baixar GeoTIFF
-                  </Button>
-                </Alert>
-              ))}
+              <Row>
+                {selectedInspectionOrthoResults.map((ortho, index) => (
+                  <Col xs={12} key={index} className="mb-3">
+                    <Card>
+                      {ortho.previewUrl && (
+                        <Card.Img 
+                          variant="top" 
+                          src={`http://localhost:3001${ortho.previewUrl}`} 
+                          alt={`Preview do Ortomosaico ${index}`}
+                          style={{ maxHeight: '400px', objectFit: 'contain', backgroundColor: '#f8f9fa' }}
+                        />
+                      )}
+                      <Card.Body>
+                        <div className="d-flex justify-content-between align-items-center">
+                          <div>
+                            <strong>{path.basename(ortho.url)}</strong>
+                            <br />
+                            <small className="text-muted">
+                              {ortho.detections.length} patologias detectadas via georreferenciamento.
+                            </small>
+                          </div>
+                          <Button 
+                            variant="primary" 
+                            size="sm"
+                            onClick={() => window.open(`http://localhost:3001${ortho.url}`, '_blank')}
+                          >
+                            Baixar GeoTIFF Anotado
+                          </Button>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
               <hr />
             </div>
           )}
