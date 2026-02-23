@@ -4,7 +4,7 @@ import api from '../../services/api';
 import { Container, Row, Col, Card, Button, Form, Modal, Alert } from 'react-bootstrap';
 import './style.css';
 import path from 'path-browserify';
-import { FaCog, FaPencilAlt } from 'react-icons/fa';
+import { FaCog, FaPencilAlt, FaTrash } from 'react-icons/fa';
 import type { IProject, IInspection, IImage, IOrthoResult } from '../../models/IProject';
 
 const ProjectView: React.FC = () => {
@@ -83,8 +83,6 @@ const ProjectView: React.FC = () => {
     if (!project || !editingInspection) return;
 
     try {
-      // Como não há rota específica para update de inspeção, usamos a de update do projeto
-      // enviando a lista de inspeções atualizada
       const updatedInspections = project.inspections?.map(insp => 
         insp.id === editingInspection.id ? editingInspection : insp
       );
@@ -128,7 +126,7 @@ const ProjectView: React.FC = () => {
   const handleDeleteInspection = async (inspectionId: string) => {
     if (!project) return;
 
-    if (!window.confirm('Tem certeza que deseja excluir esta inspeção?')) return;
+    if (!window.confirm('Tem certeza que deseja excluir esta inspeção? Todos os resultados contidos nela serão apagados.')) return;
 
     try {
       await api.delete(`/projects/${project.id}/inspections/${inspectionId}`);
@@ -149,7 +147,6 @@ const ProjectView: React.FC = () => {
       const imageName = path.basename(imageUrl);
       await api.delete(`/projects/${project.id}/inspections/${inspectionId}/images/${imageName}`);
       
-      // Atualizar o estado local para refletir a exclusão sem precisar de um fetch total
       if (selectedInspectionId === inspectionId) {
         setSelectedInspectionImages(prev => prev.filter(img => img.url !== imageUrl));
       }
@@ -158,6 +155,26 @@ const ProjectView: React.FC = () => {
     } catch (err) {
       console.error('Erro ao excluir imagem:', err);
       alert('Erro ao excluir imagem.');
+    }
+  };
+
+  const handleDeleteOrthoFromInspection = async (orthoUrl: string, inspectionId: string) => {
+    if (!project) return;
+
+    if (!window.confirm('Tem certeza que deseja excluir este resultado de ortomosaico?')) return;
+
+    try {
+      const orthoName = path.basename(orthoUrl);
+      await api.delete(`/projects/${project.id}/inspections/${inspectionId}/ortho/${orthoName}`);
+      
+      if (selectedInspectionId === inspectionId) {
+        setSelectedInspectionOrthoResults(prev => prev.filter(o => o.url !== orthoUrl));
+      }
+      
+      fetchProject();
+    } catch (err) {
+      console.error('Erro ao excluir ortomosaico:', err);
+      alert('Erro ao excluir ortomosaico.');
     }
   };
 
@@ -196,7 +213,7 @@ const ProjectView: React.FC = () => {
         formData.append('inspectionId', targetInspectionId);
 
         await api.post('/projects/process-ortho', formData, {
-          timeout: 0, // Sem timeout para ortomosaicos grandes
+          timeout: 0,
         });
         
         setSelectedFiles([]);
@@ -562,13 +579,22 @@ const ProjectView: React.FC = () => {
                               {ortho.detections.length} patologias detectadas via georreferenciamento.
                             </small>
                           </div>
-                          <Button 
-                            variant="primary" 
-                            size="sm"
-                            onClick={() => window.open(`http://localhost:3001${ortho.url}`, '_blank')}
-                          >
-                            Baixar GeoTIFF Anotado
-                          </Button>
+                          <div className="d-flex gap-2">
+                            <Button 
+                              variant="primary" 
+                              size="sm"
+                              onClick={() => window.open(`http://localhost:3001${ortho.url}`, '_blank')}
+                            >
+                              Baixar GeoTIFF Anotado
+                            </Button>
+                            <Button 
+                              variant="outline-danger" 
+                              size="sm"
+                              onClick={() => selectedInspectionId && handleDeleteOrthoFromInspection(ortho.url, selectedInspectionId)}
+                            >
+                              <FaTrash />
+                            </Button>
+                          </div>
                         </div>
                       </Card.Body>
                     </Card>

@@ -349,7 +349,98 @@ class ProjectService {
       }
     }
 
+    // Exclui a pasta do projeto inteira para garantir que não fiquem órfãos
+    const projectPath = path.resolve(uploadConfig.projectsDirectory, projectId);
+    await fs.rm(projectPath, { recursive: true, force: true }).catch(() => {});
+
+    // Exclui a pasta de imagens processadas do projeto
+    const processedPath = path.resolve(uploadConfig.projectsDirectory, '..', 'processed_images', projectId);
+    await fs.rm(processedPath, { recursive: true, force: true }).catch(() => {});
+
     await this.projectRepository.delete(projectId);
+  }
+
+  public async deleteInspection(projectId: string, inspectionId: string): Promise<void> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const inspection = project.inspections?.find(i => i.id === inspectionId);
+    if (!inspection) throw new Error('Inspeção não encontrada.');
+
+    // Remove do array
+    const updatedInspections = project.inspections?.filter(i => i.id !== inspectionId) || [];
+    await this.projectRepository.update(projectId, { inspections: updatedInspections });
+
+    // Remove pasta física da inspeção (contém ortofotos)
+    const inspectionPath = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId);
+    await fs.rm(inspectionPath, { recursive: true, force: true }).catch(() => {});
+
+    // Remove pasta de imagens processadas da inspeção
+    const processedPath = path.resolve(uploadConfig.projectsDirectory, '..', 'processed_images', projectId, inspectionId);
+    await fs.rm(processedPath, { recursive: true, force: true }).catch(() => {});
+  }
+
+  public async deleteImageFromInspection(projectId: string, inspectionId: string, imageName: string): Promise<void> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const inspection = project.inspections?.find(i => i.id === inspectionId);
+    if (!inspection) throw new Error('Inspeção não encontrada.');
+
+    // Encontra a imagem para saber a URL e apagar o arquivo
+    const imageToDelete = inspection.images.find(img => path.basename(img.url) === imageName);
+    
+    // Filtra o array
+    const updatedImages = inspection.images.filter(img => path.basename(img.url) !== imageName);
+    
+    const updatedInspections = project.inspections?.map(i => {
+      if (i.id === inspectionId) {
+        return { ...i, images: updatedImages };
+      }
+      return i;
+    }) || [];
+
+    await this.projectRepository.update(projectId, { inspections: updatedInspections });
+
+    // Apaga o arquivo físico
+    if (imageToDelete) {
+      const filePath = path.resolve(uploadConfig.projectsDirectory, '..', 'processed_images', projectId, inspectionId, imageName);
+      await fs.unlink(filePath).catch(() => {});
+    }
+  }
+
+  public async deleteOrthoFromInspection(projectId: string, inspectionId: string, orthoName: string): Promise<void> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const inspection = project.inspections?.find(i => i.id === inspectionId);
+    if (!inspection || !inspection.orthoResults) throw new Error('Inspeção ou resultados não encontrados.');
+
+    const orthoResult = inspection.orthoResults.find(o => path.basename(o.url) === orthoName);
+    
+    // Filtra o array
+    const updatedOrthoResults = inspection.orthoResults.filter(o => path.basename(o.url) !== orthoName);
+    
+    const updatedInspections = project.inspections?.map(i => {
+      if (i.id === inspectionId) {
+        return { ...i, orthoResults: updatedOrthoResults };
+      }
+      return i;
+    }) || [];
+
+    await this.projectRepository.update(projectId, { inspections: updatedInspections });
+
+    // Apaga os arquivos físicos (GeoTIFF e Preview)
+    if (orthoResult) {
+      const orthoPath = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId, orthoName);
+      await fs.unlink(orthoPath).catch(() => {});
+      
+      if (orthoResult.previewUrl) {
+        const previewName = path.basename(orthoResult.previewUrl);
+        const previewPath = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId, previewName);
+        await fs.unlink(previewPath).catch(() => {});
+      }
+    }
   }
 }
 

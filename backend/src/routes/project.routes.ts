@@ -65,7 +65,15 @@ projectRouter.delete(
 // New route for deleting image from inspection
 projectRouter.delete(
   '/:projectId/inspections/:inspectionId/images/:imageName',
+  authorizeRole(['admin']),
   projectController.deleteImageFromInspection
+);
+
+// New route for deleting orthomosaic from inspection
+projectRouter.delete(
+  '/:projectId/inspections/:inspectionId/ortho/:orthoName',
+  authorizeRole(['admin']),
+  projectController.deleteOrthoFromInspection
 );
 
 // New route for generating PDF inspection report

@@ -298,172 +298,6 @@
           ]
         },
         {
-          "id": "e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6",
-          "inspectionType": "Preventiva",
-          "inspectionObjective": "teste 02",
-          "inspectionDate": "2026-02-11",
-          "inspectionResponsible": "joazinho",
-          "images": [
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/021b3dee-7256-48b5-ba87-a51636b875f1.jpeg",
-              "detections": []
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/22891147-a8a1-4cca-875d-7b1089aa8519.jpeg",
-              "detections": [
-                {
-                  "class_name": "C02",
-                  "confidence": 0.7112971544265747,
-                  "box": {
-                    "x1": 1778.1778564453125,
-                    "y1": 1141.2012939453125,
-                    "x2": 1894.222900390625,
-                    "y2": 1215.033935546875
-                  }
-                },
-                {
-                  "class_name": "C02",
-                  "confidence": 0.7005548477172852,
-                  "box": {
-                    "x1": 1590.0167236328125,
-                    "y1": 1135.2127685546875,
-                    "x2": 1732.28955078125,
-                    "y2": 1209.5994873046875
-                  }
-                },
-                {
-                  "class_name": "C02",
-                  "confidence": 0.2671290934085846,
-                  "box": {
-                    "x1": 1581.6978759765625,
-                    "y1": 1147.5079345703125,
-                    "x2": 1735.202392578125,
-                    "y2": 1232.34765625
-                  }
-                }
-              ]
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/2e165f13-7257-40d0-93c3-f86887db5ddf.jpeg",
-              "detections": []
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/6a872438-7592-47c0-bd40-466cd22dd630.jpeg",
-              "detections": [
-                {
-                  "class_name": "C02",
-                  "confidence": 0.6176910996437073,
-                  "box": {
-                    "x1": 1776.7259521484375,
-                    "y1": 1134.056640625,
-                    "x2": 1896.0096435546875,
-                    "y2": 1207.655517578125
-                  }
-                },
-                {
-                  "class_name": "C02",
-                  "confidence": 0.4179874360561371,
-                  "box": {
-                    "x1": 1596.7266845703125,
-                    "y1": 1129.2156982421875,
-                    "x2": 1735.2249755859375,
-                    "y2": 1218.9049072265625
-                  }
-                }
-              ]
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/7c94a527-cdf2-4b20-b258-d40d817e513d.jpeg",
-              "detections": []
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/8281ff24-86bb-43ab-800f-4517a633b1ab.jpeg",
-              "detections": [
-                {
-                  "class_name": "C02",
-                  "confidence": 0.5500451922416687,
-                  "box": {
-                    "x1": 2847.863037109375,
-                    "y1": 1174.5457763671875,
-                    "x2": 2942.675048828125,
-                    "y2": 1238.5377197265625
-                  }
-                },
-                {
-                  "class_name": "C02",
-                  "confidence": 0.3709496259689331,
-                  "box": {
-                    "x1": 2641.1171875,
-                    "y1": 1153.5982666015625,
-                    "x2": 2778.533935546875,
-                    "y2": 1243.931396484375
-                  }
-                }
-              ]
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/84583513-c9c3-4454-94b5-a66b59c53b79.jpeg",
-              "detections": []
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/8b0e5bd0-bdba-4329-a92e-57d0057593ca.jpeg",
-              "detections": [
-                {
-                  "class_name": "C05",
-                  "confidence": 0.2541174590587616,
-                  "box": {
-                    "x1": 3051.08154296875,
-                    "y1": 2104.01025390625,
-                    "x2": 3691.90673828125,
-                    "y2": 2435.465087890625
-                  }
-                }
-              ]
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/9fb4ac7c-bca3-4798-baa8-fe4c72b55b29.jpeg",
-              "detections": []
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/a5ad70d0-a2c1-4597-8f05-4a1e9c9b8e89.jpeg",
-              "detections": []
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/b1e06376-034a-4142-94ed-62220474da4f.jpeg",
-              "detections": []
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/e74150b4-bae1-4601-b098-80d306974422.jpeg",
-              "detections": [
-                {
-                  "class_name": "C05",
-                  "confidence": 0.45970380306243896,
-                  "box": {
-                    "x1": 1502.8076171875,
-                    "y1": 2107.732666015625,
-                    "x2": 2048.746826171875,
-                    "y2": 2323.00732421875
-                  }
-                },
-                {
-                  "class_name": "C05",
-                  "confidence": 0.25693851709365845,
-                  "box": {
-                    "x1": 1494.839111328125,
-                    "y1": 2100.5478515625,
-                    "x2": 2155.829345703125,
-                    "y2": 2355.986328125
-                  }
-                }
-              ]
-            },
-            {
-              "url": "/files/processed_images/79023860-c9b2-4c36-a876-632a2b484c92/e0aaa55d-ca5e-40f4-aca4-a739dc99e3d6/f5779fd5-ebd5-4129-b265-3ed9494ceb52.jpeg",
-              "detections": []
-            }
-          ]
-        },
-        {
           "id": "ca6fdc43-1f2a-4443-aa2d-f7c6f6ad394b",
           "inspectionType": "Corretiva",
           "inspectionObjective": "Teste de validação ",
@@ -1449,58 +1283,34 @@
           "images": [],
           "orthoResults": [
             {
-              "url": "/files/projects/79023860-c9b2-4c36-a876-632a2b484c92/6187a805-bec2-41c6-a15a-cee2c66d95d4/96a546f3-3f47-426a-8d37-3094a3a8b7da.jpeg",
-              "detections": [
-                {
-                  "class_name": "C05",
-                  "confidence": 0.26393717527389526,
-                  "pixel_box": {
-                    "x1": 5229.8778076171875,
-                    "y1": 3806.213653564453,
-                    "x2": 5277.916564941406,
-                    "y2": 3837.673583984375
-                  },
-                  "geo_box": {
-                    "lat1": 3806.213653564453,
-                    "lon1": 5229.8778076171875,
-                    "lat2": 3837.673583984375,
-                    "lon2": 5277.916564941406
-                  },
-                  "center": {
-                    "lat": 3821.943618774414,
-                    "lon": 5253.897186279297
-                  }
-                }
-              ]
-            },
-            {
-              "url": "/files/projects/79023860-c9b2-4c36-a876-632a2b484c92/6187a805-bec2-41c6-a15a-cee2c66d95d4/c62b1c84-53fc-41c0-942e-f9d0fbfcf2a6.jpeg",
-              "detections": [
-                {
-                  "class_name": "C05",
-                  "confidence": 0.26393717527389526,
-                  "pixel_box": {
-                    "x1": 5229.8778076171875,
-                    "y1": 3806.213653564453,
-                    "x2": 5277.916564941406,
-                    "y2": 3837.673583984375
-                  },
-                  "geo_box": {
-                    "lat1": 3806.213653564453,
-                    "lon1": 5229.8778076171875,
-                    "lat2": 3837.673583984375,
-                    "lon2": 5277.916564941406
-                  },
-                  "center": {
-                    "lat": 3821.943618774414,
-                    "lon": 5253.897186279297
-                  }
-                }
-              ]
-            },
-            {
               "url": "/files/projects/79023860-c9b2-4c36-a876-632a2b484c92/6187a805-bec2-41c6-a15a-cee2c66d95d4/5daf2420-80b0-4da9-b5c6-5c52d4976434_annotated.jpeg",
               "previewUrl": "/files/projects/79023860-c9b2-4c36-a876-632a2b484c92/6187a805-bec2-41c6-a15a-cee2c66d95d4/5daf2420-80b0-4da9-b5c6-5c52d4976434_preview.jpg",
+              "detections": [
+                {
+                  "class_name": "C05",
+                  "confidence": 0.26393717527389526,
+                  "pixel_box": {
+                    "x1": 5229.8778076171875,
+                    "y1": 3806.213653564453,
+                    "x2": 5277.916564941406,
+                    "y2": 3837.673583984375
+                  },
+                  "geo_box": {
+                    "lat1": 3806.213653564453,
+                    "lon1": 5229.8778076171875,
+                    "lat2": 3837.673583984375,
+                    "lon2": 5277.916564941406
+                  },
+                  "center": {
+                    "lat": 3821.943618774414,
+                    "lon": 5253.897186279297
+                  }
+                }
+              ]
+            },
+            {
+              "url": "/files/projects/79023860-c9b2-4c36-a876-632a2b484c92/6187a805-bec2-41c6-a15a-cee2c66d95d4/8ce9d9ec-06b3-461f-9830-fb4d8d86fa0f_annotated.jpeg",
+              "previewUrl": "/files/projects/79023860-c9b2-4c36-a876-632a2b484c92/6187a805-bec2-41c6-a15a-cee2c66d95d4/8ce9d9ec-06b3-461f-9830-fb4d8d86fa0f_preview.jpg",
               "detections": [
                 {
                   "class_name": "C05",

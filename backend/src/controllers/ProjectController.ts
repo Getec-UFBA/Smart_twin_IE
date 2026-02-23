@@ -404,6 +404,25 @@ class ProjectController {
     }
   }
 
+  public async deleteOrthoFromInspection(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, inspectionId, orthoName } = req.params;
+
+    if (!projectId || !inspectionId || !orthoName) {
+      return res.status(400).json({ error: 'ID do projeto, ID da inspeção e nome do ortomosaico são obrigatórios.' });
+    }
+
+    const projectService = new ProjectService();
+    try {
+      await projectService.deleteOrthoFromInspection(projectId, inspectionId, orthoName);
+      return res.status(204).send();
+    } catch (error) {
+        if (error instanceof Error) {
+            return res.status(400).json({ error: error.message });
+        }
+        return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+  }
+
   public async deleteInspection(req: AuthRequest, res: Response): Promise<Response> {
     const { projectId, inspectionId } = req.params;
 
