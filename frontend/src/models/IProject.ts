@@ -25,11 +25,9 @@ export interface IImage {
 
 export interface IOrthoResult {
   url: string;
-  previewUrl?: string;
   detections: IGeoDetection[];
 }
 
-// Nova interface IInspection (substitui IFolder)
 export interface IInspection {
   id: string; 
   inspectionType: string;

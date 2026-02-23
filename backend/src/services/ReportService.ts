@@ -101,6 +101,7 @@ class ReportService {
     const inspectionsToReport = targetInspection ? [targetInspection] : (project.inspections || []);
 
     inspectionsToReport.forEach(inspection => {
+        // Detecções em imagens comuns
         inspection.images.forEach(image => {
           let detections = image.detections;
           if (typeof detections === 'string') {
@@ -118,6 +119,18 @@ class ReportService {
             });
           }
         });
+
+        // Detecções em ortomosaicos
+        if (inspection.orthoResults) {
+          inspection.orthoResults.forEach(ortho => {
+            if (ortho.detections) {
+              totalDefects += ortho.detections.length;
+              ortho.detections.forEach(det => {
+                defectsByClass[det.class_name] = (defectsByClass[det.class_name] || 0) + 1;
+              });
+            }
+          });
+        }
     });
 
     let defectsByClassHtml = '';
@@ -137,6 +150,55 @@ class ReportService {
     let inspectionsHtml = '';
     if (inspectionsToReport.length > 0) {
       inspectionsHtml = inspectionsToReport.map(inspection => {
+        // Renderizar Ortomosaicos
+        let orthoResultsHtml = '';
+        if (inspection.orthoResults && inspection.orthoResults.length > 0) {
+          orthoResultsHtml = inspection.orthoResults.map(ortho => {
+            let orthoImgSrc = '';
+            if (ortho.previewUrl && ortho.previewUrl.startsWith('/files/')) {
+              try {
+                const relativePath = ortho.previewUrl.replace('/files/', '');
+                const absolutePath = path.resolve(__dirname, '..', '..', 'public', 'uploads', relativePath);
+                if (fs.existsSync(absolutePath)) {
+                  orthoImgSrc = pathToFileURL(absolutePath).href;
+                }
+              } catch (err) {
+                console.error(`[ReportService] Erro ao obter URL do preview do ortomosaico: ${ortho.previewUrl}`, err);
+              }
+            }
+
+            return `
+              <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #004d40; border-radius: 5px; page-break-inside: avoid; background-color: #fff;">
+                <h4>Ortomosaico: ${path.basename(ortho.url)}</h4>
+                ${orthoImgSrc ? `<img src="${orthoImgSrc}" alt="Preview Ortomosaico" style="max-width: 100%; height: auto; display: block; margin-bottom: 10px; border: 1px solid #ccc;">` : '<p style="color: gray;">Pré-visualização do ortomosaico não disponível.</p>'}
+                <p><strong>Detecções Georreferenciadas (${ortho.detections?.length || 0}):</strong></p>
+                ${ortho.detections && ortho.detections.length > 0 ? `
+                  <table style="width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.9em;">
+                    <thead>
+                      <tr>
+                        <th>Classe</th>
+                        <th>Confiança</th>
+                        <th>Coordenadas (Lat, Lon)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${ortho.detections.slice(0, 50).map(det => `
+                        <tr>
+                          <td>${det.class_name}</td>
+                          <td>${(det.confidence * 100).toFixed(2)}%</td>
+                          <td>${det.center.lat.toFixed(6)}, ${det.center.lon.toFixed(6)}</td>
+                        </tr>
+                      `).join('')}
+                      ${ortho.detections.length > 50 ? '<tr><td colspan="3" style="text-align:center;">... e mais ${ortho.detections.length - 50} detecções</td></tr>' : ''}
+                    </tbody>
+                  </table>
+                ` : '<p>Nenhuma detecção encontrada neste ortomosaico.</p>'}
+              </div>
+            `;
+          }).join('');
+        }
+
+        // Renderizar Imagens Comuns
         let imagesHtml = '';
         if (inspection.images && inspection.images.length > 0) {
           imagesHtml = inspection.images.map(image => {
@@ -147,30 +209,6 @@ class ReportService {
               } catch (error) {
                 detections = [];
               }
-            }
-
-            let detectionsHtml = 'Nenhuma detecção.';
-            if (detections && Array.isArray(detections) && detections.length > 0) {
-              detectionsHtml = `
-                <table style="width: 100%; border-collapse: collapse; margin-top: 5px;">
-                  <thead>
-                    <tr>
-                      <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2; text-align: left;">Classe</th>
-                      <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2; text-align: left;">Confiança</th>
-                      <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2; text-align: left;">Caixa (x1,y1,x2,y2)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${detections.map(det => `
-                      <tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${det.class_name}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${(det.confidence * 100).toFixed(2)}%</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">(${det.box.x1.toFixed(0)},${det.box.y1.toFixed(0)},${det.box.x2.toFixed(0)},${det.box.y2.toFixed(0)})</td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              `;
             }
 
             let imgSrc = '';
@@ -191,22 +229,44 @@ class ReportService {
               <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 5px; page-break-inside: avoid;">
                 <h4>Imagem: ${image.url ? path.basename(image.url) : 'Nome da imagem indisponível'}</h4>
                 ${imgSrc ? `<img src="${imgSrc}" alt="Imagem Processada" style="max-width: 100%; height: auto; display: block; margin-bottom: 10px; border: 1px solid #ccc;">` : '<p style="color: red;">Imagem não pôde ser carregada.</p>'}
-                <p><strong>Detecções YOLO:</strong></p>
-                ${detectionsHtml}
+                <p><strong>Detecções (${detections?.length || 0}):</strong></p>
+                ${detections && Array.isArray(detections) && detections.length > 0 ? `
+                  <table style="width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.9em;">
+                    <thead>
+                      <tr>
+                        <th>Classe</th>
+                        <th>Confiança</th>
+                        <th>Caixa (x1,y1,x2,y2)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${detections.map(det => `
+                        <tr>
+                          <td>${det.class_name}</td>
+                          <td>${(det.confidence * 100).toFixed(2)}%</td>
+                          <td>(${det.box.x1.toFixed(0)},${det.box.y1.toFixed(0)},${det.box.x2.toFixed(0)},${det.box.y2.toFixed(0)})</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                ` : 'Nenhuma detecção.'}
               </div>
             `;
           }).join('');
-        } else {
-          imagesHtml = '<p>Nenhuma imagem nesta inspeção.</p>';
         }
 
         return `
           <div style="margin-bottom: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9;">
-            <h2>Inspeção: ${inspection.inspectionObjective}</h2>
-            <p><strong>Tipo:</strong> ${inspection.inspectionType}</p>
-            <p><strong>Data:</strong> ${inspection.inspectionDate}</p>
-            <p><strong>Responsável:</strong> ${inspection.inspectionResponsible}</p>
-            ${imagesHtml}
+            <h2 style="border-bottom: 2px solid #004d40; padding-bottom: 5px;">Inspeção: ${inspection.inspectionObjective}</h2>
+            <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+              <p><strong>Tipo:</strong> ${inspection.inspectionType}</p>
+              <p><strong>Data:</strong> ${inspection.inspectionDate}</p>
+              <p><strong>Responsável:</strong> ${inspection.inspectionResponsible}</p>
+            </div>
+            
+            ${orthoResultsHtml ? `<h3>Resultados de Ortomosaicos</h3>${orthoResultsHtml}` : ''}
+            
+            ${imagesHtml ? `<h3>Imagens de Inspeção</h3>${imagesHtml}` : ''}
           </div>
         `;
       }).join('');
@@ -222,32 +282,38 @@ class ReportService {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Relatório de Projeto - ${project.name}</title>
           <style>
-              body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; color: #333; }
-              .header { background-color: #004d40; color: #ffffff; padding: 20px; text-align: center; }
-              .header h1 { margin: 0; }
+              body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; color: #333; line-height: 1.6; }
+              .header { background-color: #004d40; color: #ffffff; padding: 30px; text-align: center; }
+              .header h1 { margin: 0; font-size: 2.5em; }
               .container { width: 90%; margin: 20px auto; }
-              .section { margin-bottom: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; background-color: #fff; }
-              h2, h3, h4 { color: #004d40; }
-              img { max-width: 100%; height: auto; display: block; margin: 10px 0; border: 1px solid #ddd; }
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-              .footer { text-align: center; margin-top: 40px; font-size: 0.8em; color: #777; }
+              .section { margin-bottom: 25px; padding: 20px; border: 1px solid #eee; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+              h2, h3, h4 { color: #004d40; margin-top: 0; }
+              img { max-width: 100%; height: auto; display: block; margin: 15px 0; border: 1px solid #ddd; border-radius: 4px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+              th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+              th { background-color: #f2f2f2; font-weight: bold; }
+              .footer { text-align: center; margin-top: 50px; padding: 20px; font-size: 0.9em; color: #777; border-top: 1px solid #eee; }
+              @media print {
+                .section { box-shadow: none; border: 1px solid #eee; }
+                .header { -webkit-print-color-adjust: exact; }
+              }
           </style>
       </head>
       <body>
           <div class="header">
               <h1>Relatório de Projeto</h1>
-              <p>${project.name}</p>
+              <p style="font-size: 1.2em; margin-top: 10px;">${project.name}</p>
           </div>
           <div class="container">
               <div class="section">
                   <h2>Informações do Projeto</h2>
-                  <p><strong>ID:</strong> ${project.id}</p>
-                  <p><strong>Nome:</strong> ${project.name}</p>
-                  <p><strong>Responsável:</strong> ${project.responsible}</p>
-                  <p><strong>URL Modelo BIM:</strong> <a href="${project.bimModelUrl}">${project.bimModelUrl}</a></p>
-                  <p><strong>Módulos Ativos:</strong> ${Object.keys(project.modules).filter(key => project.modules[key]).map(key => {
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <p><strong>Nome:</strong> ${project.name}</p>
+                    <p><strong>Responsável:</strong> ${project.responsible}</p>
+                    <p><strong>Endereço:</strong> ${project.address}</p>
+                    <p><strong>Tipo:</strong> ${project.type}</p>
+                  </div>
+                  <p><strong>Módulos Ativos:</strong> ${Object.keys(project.modules).filter(key => project.modules[key as keyof typeof project.modules]).map(key => {
                     switch (key) {
                       case 'progress': return 'Progresso';
                       case 'security': return 'Segurança';
@@ -256,25 +322,28 @@ class ReportService {
                     }
                   }).join(', ') || 'Nenhum'}</p>
                   ${project.modules.maintenance ? `
-                    <h3>Informações de Manutenção</h3>
-                    <p><strong>Ano Construído:</strong> ${project.buildingYear || 'Não informado'}</p>
-                    <p><strong>Área Construída:</strong> ${project.builtArea || 'Não informado'} m²</p>
-                    <p><strong>Tipologia da Fachada:</strong> ${project.facadeTypology || 'Não informado'}</p>
-                    <p><strong>Tipologia da Cobertura:</strong> ${project.roofTypology || 'Não informado'}</p>
+                    <h3 style="margin-top: 15px;">Dados Técnicos (Manutenção)</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                      <p><strong>Ano Construído:</strong> ${project.buildingYear || 'Não informado'}</p>
+                      <p><strong>Área Construída:</strong> ${project.builtArea || 'Não informado'} m²</p>
+                      <p><strong>Tipologia da Fachada:</strong> ${project.facadeTypology || 'Não informado'}</p>
+                      <p><strong>Tipologia da Cobertura:</strong> ${project.roofTypology || 'Não informado'}</p>
+                    </div>
                   ` : ''}
               </div>
               <div class="section">
-                  <h2>Informações Relevantes</h2>
-                  <p><strong>Número de Defeitos Totais:</strong> ${totalDefects}</p>
+                  <h2>Resumo de Patologias Detectadas</h2>
+                  <p><strong>Total de Defeitos Identificados:</strong> <span style="font-size: 1.2em; font-weight: bold; color: #d32f2f;">${totalDefects}</span></p>
                   ${defectsByClassHtml}
               </div>
               <div class="section">
-                  <h2>Imagens Processadas e Detecções</h2>
+                  <h2>Detalhamento por Inspeção</h2>
                   ${inspectionsHtml}
               </div>
           </div>
           <div class="footer">
-              <p>Relatório gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+              <p>Smart Inspects - Relatório Automatizado via IA</p>
+              <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
           </div>
       </body>
       </html>

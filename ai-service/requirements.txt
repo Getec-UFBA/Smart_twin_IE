@@ -3,3 +3,9 @@ uvicorn[standard]
 python-multipart
 opencv-python-headless
 ultralytics
+rasterio
+onnx
+onnxruntime
+shapely
+
+

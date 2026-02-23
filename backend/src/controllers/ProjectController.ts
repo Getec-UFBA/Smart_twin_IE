@@ -188,6 +188,70 @@ class ProjectController {
     }
   }
 
+  public processOrthoForResults = async (req: AuthRequest, res: Response): Promise<Response> => {
+    const file = req.file;
+    const { projectId, inspectionId } = req.body;
+
+    if (!file) {
+      return res.status(400).json({ error: 'Nenhum arquivo GeoTIFF enviado.' });
+    }
+
+    if (!projectId || !inspectionId) {
+      return res.status(400).json({ error: 'ID do projeto e ID da inspeção são obrigatórios.' });
+    }
+
+    const imageProcessingService = new ImageProcessingService();
+    const projectService = new ProjectService();
+
+    try {
+      // 1. Processa no serviço de IA
+      const { detections, annotated_ortho_url, preview_url } = await imageProcessingService.processOrtho(file.path);
+      
+      const requestUuid = randomUUID();
+      const finalDir = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId);
+      await fs.mkdir(finalDir, { recursive: true });
+
+      // 2. Baixa o GeoTIFF anotado e salva
+      const annotatedBuffer = await imageProcessingService.downloadFile(annotated_ortho_url);
+      const finalOrthoName = `${requestUuid}_annotated${path.extname(file.originalname)}`;
+      const finalOrthoPath = path.join(finalDir, finalOrthoName);
+      await fs.writeFile(finalOrthoPath, annotatedBuffer);
+
+      // 3. Baixa a imagem de pré-visualização e salva
+      const previewBuffer = await imageProcessingService.downloadFile(preview_url);
+      const finalPreviewName = `${requestUuid}_preview.jpg`;
+      const finalPreviewPath = path.join(finalDir, finalPreviewName);
+      await fs.writeFile(finalPreviewPath, previewBuffer);
+
+      const orthoResult = {
+        url: `/files/projects/${projectId}/${inspectionId}/${finalOrthoName}`,
+        previewUrl: `/files/projects/${projectId}/${inspectionId}/${finalPreviewName}`,
+        detections: detections,
+      };
+
+      await projectService.addOrthoResultsToInspection({
+        projectId,
+        inspectionId,
+        orthoResults: [orthoResult],
+      });
+
+      return res.status(200).json({
+        message: 'Ortomosaico processado com sucesso.',
+        detections_count: detections.length,
+        preview_url: orthoResult.previewUrl
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Error processing ortho ${file.originalname}:`, error);
+      return res.status(500).json({ error: `Falha ao processar ortomosaico: ${errorMessage}` });
+    } finally {
+      if (file && file.path) {
+        await fs.unlink(file.path).catch(() => {});
+      }
+    }
+  }
+
   private getProcessedImageData = async (imagePath: string, imageProcessingService: ImageProcessingService): Promise<{ processedImageBase64: string; detections: IDetection[] }> => {
     try {
       const processedImageResponse = await imageProcessingService.processImage(imagePath);
@@ -331,6 +395,25 @@ class ProjectController {
     const projectService = new ProjectService();
     try {
       await projectService.deleteImageFromInspection(projectId, inspectionId, imageName);
+      return res.status(204).send();
+    } catch (error) {
+        if (error instanceof Error) {
+            return res.status(400).json({ error: error.message });
+        }
+        return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+  }
+
+  public async deleteOrthoFromInspection(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, inspectionId, orthoName } = req.params;
+
+    if (!projectId || !inspectionId || !orthoName) {
+      return res.status(400).json({ error: 'ID do projeto, ID da inspeção e nome do ortomosaico são obrigatórios.' });
+    }
+
+    const projectService = new ProjectService();
+    try {
+      await projectService.deleteOrthoFromInspection(projectId, inspectionId, orthoName);
       return res.status(204).send();
     } catch (error) {
         if (error instanceof Error) {

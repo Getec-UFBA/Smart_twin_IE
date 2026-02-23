@@ -23,6 +23,13 @@ projectRouter.post(
   projectController.processImagesForResults
 );
 
+// Route to process a single orthomosaic (GeoTIFF)
+projectRouter.post(
+  '/process-ortho',
+  upload.single('ortho'),
+  projectController.processOrthoForResults
+);
+
 // Route to get the data for a pending review
 projectRouter.get(
   '/review/:reviewId',
@@ -58,7 +65,15 @@ projectRouter.delete(
 // New route for deleting image from inspection
 projectRouter.delete(
   '/:projectId/inspections/:inspectionId/images/:imageName',
+  authorizeRole(['admin']),
   projectController.deleteImageFromInspection
+);
+
+// New route for deleting orthomosaic from inspection
+projectRouter.delete(
+  '/:projectId/inspections/:inspectionId/ortho/:orthoName',
+  authorizeRole(['admin']),
+  projectController.deleteOrthoFromInspection
 );
 
 // New route for generating PDF inspection report
