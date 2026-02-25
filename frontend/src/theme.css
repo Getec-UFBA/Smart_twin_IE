@@ -3,33 +3,94 @@ body.light {
   --bs-secondary: #6c757d; /* Cinza */
   --bs-body-bg: #ffffff; /* Fundo Branco */
   --bs-body-color: #212529; /* Texto Preto */
+  --bs-border-color: #dee2e6;
+  --bs-card-bg: #fff;
 
   /* Estilo para botões light */
-  --bs-btn-light-color: #212529; /* Texto escuro */
-  --bs-btn-light-bg: #f8f9fa; /* Fundo branco */
-  --bs-btn-light-border-color: #adb5bd; /* Borda cinza claro */
-  --bs-btn-light-hover-color: #fff; /* Texto branco no hover */
-  --bs-btn-light-hover-bg: var(--bs-primary); /* Fundo verde no hover */
-  --bs-btn-light-hover-border-color: var(--bs-primary); /* Borda verde no hover */
+  --bs-btn-light-color: #212529;
+  --bs-btn-light-bg: #f8f9fa;
+  --bs-btn-light-border-color: #adb5bd;
 }
 
 body.dark {
   --bs-primary: #198754; /* Verde */
   --bs-secondary: #6c757d; /* Cinza */
-  --bs-body-bg: #343a40; /* Fundo Cinza Escuro */
+  --bs-body-bg: #1a1d20; /* Fundo mais escuro */
   --bs-body-color: #f8f9fa; /* Texto Cinza Claro */
-
-  /* Estilo para botões light */
-  --bs-btn-light-color: #212529; /* Texto escuro */
-  --bs-btn-light-bg: #f8f9fa; /* Fundo branco */
-  --bs-btn-light-border-color: #adb5bd; /* Borda cinza claro */
-  --bs-btn-light-hover-color: #fff; /* Texto branco no hover */
-  --bs-btn-light-hover-bg: var(--bs-primary); /* Fundo verde no hover */
-  --bs-btn-light-hover-border-color: var(--bs-primary); /* Borda verde no hover */
+  --bs-border-color: #373b3e;
+  --bs-card-bg: #212529;
+  
+  /* Bootstrap Select/Form/Dropdown in Dark Mode */
+  --bs-tertiary-bg: #2b3035;
+  --bs-emphasis-color: #fff;
+  --bs-secondary-color: #adb5bd;
+  --bs-secondary-bg: #343a40;
 }
 
-/* Estilo para a marca no cabeçalho */
-.navbar-brand-custom {
-  font-weight: bold;
-  color: var(--bs-primary); /* Verde */
+/* Global Dark Mode Overrides */
+body.dark .form-control,
+body.dark .form-select {
+  background-color: #2b3035;
+  color: #fff;
+  border-color: #495057;
+}
+
+body.dark .form-control:focus,
+body.dark .form-select:focus {
+  background-color: #2b3035;
+  color: #fff;
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+}
+
+body.dark .dropdown-menu {
+  background-color: #2b3035;
+  color: #fff;
+  border-color: #495057;
+}
+
+body.dark .dropdown-item {
+  color: #dee2e6;
+}
+
+body.dark .dropdown-item:hover {
+  background-color: #3d4246;
+  color: #fff;
+}
+
+body.dark .card {
+  background-color: var(--bs-card-bg);
+  border-color: var(--bs-border-color);
+}
+
+body.dark .list-group-item {
+  background-color: #212529;
+  color: #fff;
+  border-color: #373b3e;
+}
+
+/* Custom Success and Primary Buttons to be more vibrant green */
+.btn-success, .btn-primary {
+  background-color: #198754 !important;
+  border-color: #198754 !important;
+  color: #fff !important;
+}
+
+.btn-success:hover, .btn-primary:hover,
+.btn-success:focus, .btn-primary:focus {
+  background-color: #157347 !important;
+  border-color: #146c43 !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25) !important;
+}
+
+.btn-outline-primary {
+  color: #198754 !important;
+  border-color: #198754 !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: #198754 !important;
+  border-color: #198754 !important;
+  color: #fff !important;
 }

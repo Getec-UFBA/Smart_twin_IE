@@ -22,7 +22,7 @@
 .navbar-brand-custom {
   font-weight: bold;
   font-size: 1.5rem;
-  color: white;
+  color: var(--bs-primary) !important;
 }
 
 /* Garante que o container principal cresça para preencher o espaço disponível */

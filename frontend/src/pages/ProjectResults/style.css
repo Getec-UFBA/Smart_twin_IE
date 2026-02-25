@@ -1,22 +1,77 @@
 .project-results-container {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  min-height: 100vh;
   padding: 2rem;
 }
 
-.project-results-container .card {
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+.result-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-color: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color) !important;
 }
 
-.project-results-container .card:hover {
+.result-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.3) !important;
 }
 
-.project-results-container .card-img-top {
-  width: 100%;
+.card-img-container {
   height: 200px;
-  object-fit: cover;
+  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
-.project-results-container .card-body {
-  padding: 1rem;
+body.dark .card-img-container {
+  background-color: #1a1d20;
+}
+
+.result-img {
+  max-height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.result-img:hover {
+  opacity: 0.9;
+}
+
+.save-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #198754;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 2;
+}
+
+/* Header selection card */
+.selection-header-card {
+  background-color: var(--bs-tertiary-bg) !important;
+  border: 1px solid var(--bs-border-color) !important;
+  color: var(--bs-body-color);
+}
+
+body.dark .form-label {
+  color: #adb5bd;
+}
+
+.result-preview-modal .modal-content {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
+  overflow: hidden;
 }

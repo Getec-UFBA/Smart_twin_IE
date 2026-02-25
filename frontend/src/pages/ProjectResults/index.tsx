@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Form, Dropdown, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Form, Dropdown, Alert, Modal } from 'react-bootstrap';
 import api from '../../services/api';
 import './style.css';
+import { FaSave, FaDownload, FaArrowLeft, FaCheckCircle } from 'react-icons/fa';
 
 interface IImage {
   url: string;
@@ -23,6 +24,8 @@ const ProjectResults: React.FC = () => {
   const [inspections, setInspections] = useState<IInspection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<{ [key: string]: { saving: boolean; error: string | null; success: boolean } }>({});
+  const [expandedImage, setExpandedImage] = useState<{ url: string; index: number } | null>(null);
+  const [selectedGlobalInspectionId, setSelectedGlobalInspectionId] = useState<string>('');
 
   useEffect(() => {
     if (location.state && location.state.processedImages) {
@@ -34,7 +37,11 @@ const ProjectResults: React.FC = () => {
     const fetchInspections = async () => {
       try {
         const response = await api.get(`/projects/${projectId}`);
-        setInspections(response.data.inspections || []);
+        const fetchedInspections = response.data.inspections || [];
+        setInspections(fetchedInspections);
+        if (fetchedInspections.length > 0) {
+          setSelectedGlobalInspectionId(fetchedInspections[0].id);
+        }
       } catch (err) {
         console.error('Erro ao buscar inspeções:', err);
         setError('Falha ao carregar as inspeções do projeto.');
@@ -87,6 +94,19 @@ const ProjectResults: React.FC = () => {
     }
   };
 
+  const handleSaveAllToSelected = async () => {
+    if (!selectedGlobalInspectionId) {
+      alert('Por favor, selecione uma inspeção primeiro.');
+      return;
+    }
+
+    const unsavedImages = images.filter(img => !saveStatus[img.url]?.success && !saveStatus[img.url]?.saving);
+    
+    for (const image of unsavedImages) {
+      handleSaveToInspection(image.url, image.detections || [], selectedGlobalInspectionId);
+    }
+  };
+
   const handleDownloadImage = (imageUrl: string, filename: string) => {
     const link = document.createElement('a');
     link.href = `${api.defaults.baseURL}${imageUrl}`;
@@ -100,39 +120,92 @@ const ProjectResults: React.FC = () => {
     return (
       <Container>
         <Alert variant="danger" className="mt-4">{error}</Alert>
-        <Button onClick={() => navigate(`/projetos/${projectId}`)}>Voltar ao Projeto</Button>
+        <Button variant="outline-primary" onClick={() => navigate(`/projetos/${projectId}`)}>
+          <FaArrowLeft className="me-2" /> Voltar ao Projeto
+        </Button>
       </Container>
     );
   }
 
   return (
-    <Container fluid className="project-results-container">
-      <Row className="my-4">
+    <Container fluid className="project-results-container py-4">
+      <Row className="mb-4 align-items-center">
         <Col>
-          <h1>Imagens Processadas</h1>
-          <p>Selecione uma inspeção para salvar as imagens desejadas.</p>
+          <h1 className="h3 mb-1">Resultados do Processamento</h1>
+          <p className="text-muted">Revise as detecções e salve as imagens nas inspeções desejadas.</p>
         </Col>
         <Col xs="auto">
-          <Button onClick={() => navigate(`/projetos/${projectId}`)}>Voltar ao Projeto</Button>
+          <Button variant="outline-secondary" onClick={() => navigate(`/projetos/${projectId}`)}>
+            <FaArrowLeft className="me-2" /> Voltar
+          </Button>
         </Col>
       </Row>
+
+      <Card className="mb-4 shadow-sm border-0 selection-header-card">
+        <Card.Body>
+          <Row className="align-items-end g-3">
+            <Col md={5}>
+              <Form.Group>
+                <Form.Label className="fw-bold">Salvar imagens em:</Form.Label>
+                <Form.Select 
+                  value={selectedGlobalInspectionId} 
+                  onChange={(e) => setSelectedGlobalInspectionId(e.target.value)}
+                  className="form-select-lg"
+                >
+                  <option value="" disabled>Selecione uma inspeção...</option>
+                  {inspections.map(insp => (
+                    <option key={insp.id} value={insp.id}>{insp.inspectionObjective}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col md="auto">
+              <Button 
+                variant="success" 
+                size="lg" 
+                onClick={handleSaveAllToSelected}
+                disabled={!selectedGlobalInspectionId || images.every(img => saveStatus[img.url]?.success)}
+                className="px-4"
+              >
+                <FaSave className="me-2" /> Salvar Todas Pendentes
+              </Button>
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+
       <Row>
         {images.map((image, index) => (
           <Col xs={12} sm={6} md={4} lg={3} key={index} className="mb-4">
-            <Card>
-              <Card.Img variant="top" src={`${api.defaults.baseURL}${image.url}`} alt={`Imagem Processada ${index + 1}`} />
-              <Card.Body>
-                <div className="d-flex justify-content-between align-items-center">
-                  <Dropdown>
+            <Card className="h-100 shadow-sm border-0 result-card">
+              <div className="position-relative overflow-hidden card-img-container">
+                <Card.Img 
+                  variant="top" 
+                  src={`${api.defaults.baseURL}${image.url}`} 
+                  alt={`Imagem Processada ${index + 1}`} 
+                  className="result-img"
+                  onClick={() => setExpandedImage({ url: `${api.defaults.baseURL}${image.url}`, index })}
+                />
+                {saveStatus[image.url]?.success && (
+                  <div className="save-badge">
+                    <FaCheckCircle className="me-1" /> Salvo
+                  </div>
+                )}
+              </div>
+              <Card.Body className="d-flex flex-column">
+                <div className="d-flex justify-content-between align-items-center mt-auto gap-2">
+                  <Dropdown className="flex-grow-1">
                     <Dropdown.Toggle 
-                      variant="primary" 
+                      variant={saveStatus[image.url]?.success ? "outline-success" : "success"}
                       id={`dropdown-save-${index}`}
                       disabled={saveStatus[image.url]?.saving || saveStatus[image.url]?.success}
+                      className="w-100"
                     >
-                      {saveStatus[image.url]?.saving ? 'Salvando...' : saveStatus[image.url]?.success ? 'Salvo!' : 'Salvar em...'}
+                      {saveStatus[image.url]?.saving ? 'Salvando...' : saveStatus[image.url]?.success ? 'Salvo!' : 'Salvar nesta...'}
                     </Dropdown.Toggle>
 
-                    <Dropdown.Menu>
+                    <Dropdown.Menu className="shadow">
+                      <Dropdown.Header>Escolha a Inspeção</Dropdown.Header>
                       {inspections.length > 0 ? (
                         inspections.map(inspection => (
                           <Dropdown.Item 
@@ -150,12 +223,13 @@ const ProjectResults: React.FC = () => {
                   <Button
                     variant="outline-secondary"
                     onClick={() => handleDownloadImage(image.url, `processed-image-${index}.png`)}
+                    title="Download"
                   >
-                    Download
+                    <FaDownload />
                   </Button>
                 </div>
                 {saveStatus[image.url]?.error && (
-                  <Alert variant="danger" className="mt-2" style={{ fontSize: '0.8rem', padding: '0.5rem' }}>
+                  <Alert variant="danger" className="mt-2 py-1 px-2 mb-0" style={{ fontSize: '0.75rem' }}>
                     {saveStatus[image.url]?.error}
                   </Alert>
                 )}
@@ -164,6 +238,28 @@ const ProjectResults: React.FC = () => {
           </Col>
         ))}
       </Row>
+
+      <Modal 
+        show={!!expandedImage} 
+        onHide={() => setExpandedImage(null)} 
+        size="xl" 
+        centered
+        className="result-preview-modal"
+      >
+        <Modal.Header closeButton className="border-0">
+          <Modal.Title>Imagem Processada {expandedImage ? expandedImage.index + 1 : ''}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center p-0 pb-3">
+          {expandedImage && (
+            <img 
+              src={expandedImage.url} 
+              alt="Imagem Expandida" 
+              className="img-fluid rounded-bottom"
+              style={{ maxHeight: '80vh', objectFit: 'contain' }}
+            />
+          )}
+        </Modal.Body>
+      </Modal>
     </Container>
   );
 };

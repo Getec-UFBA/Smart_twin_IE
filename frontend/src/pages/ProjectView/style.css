@@ -1,92 +1,122 @@
 /* General styling for ProjectView */
 .project-view-container {
   padding: 20px;
-  background-color: var(--bs-body-bg); /* Use a variável do tema */
-  min-height: 100vh; /* Ensure it takes full viewport height */
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  min-height: 100vh;
 }
 
 .project-header {
   margin-bottom: 30px;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
   padding-bottom: 15px;
 }
 
 .project-title {
-  color: #343a40; /* Darker text for title */
+  color: var(--bs-body-color);
   font-weight: 600;
 }
 
 /* Card styling */
 .card {
-  border: none;
-  border-radius: 0.5rem;
+  border: 1px solid var(--bs-border-color, rgba(0,0,0,0.125));
+  border-radius: 0.75rem;
   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   margin-bottom: 20px;
+  background-color: var(--bs-card-bg, #fff);
+  color: var(--bs-body-color);
+}
+
+body.dark .card {
+  background-color: #2c3034;
+  border-color: #454d55;
+  --bs-card-bg: #2c3034;
 }
 
 .card-header {
-  background-color: #e9ecef;
-  border-bottom: 1px solid #dee2e6;
+  background-color: var(--bs-light, #e9ecef);
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
   font-weight: 500;
-  color: #495057;
+  color: var(--bs-body-color);
+}
+
+body.dark .card-header {
+  background-color: #3d4246;
+  border-color: #454d55;
 }
 
 .card-title {
-  color: #007bff; /* Primary color for card titles */
+  color: var(--bs-primary);
   margin-bottom: 1rem;
 }
 
-/* Image processing section */
-.image-processing-section {
-  padding: 15px;
-  border: 1px solid #ced4da;
-  border-radius: 0.3rem;
-  background-color: #ffffff;
-  margin-bottom: 1.5rem;
+/* Modern File Input */
+.custom-file-upload {
+  border: 2px dashed var(--bs-primary);
+  border-radius: 10px;
+  display: block;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  margin-bottom: 1rem;
+}
+
+.custom-file-upload:hover {
+  background-color: rgba(25, 135, 84, 0.1);
+  border-color: var(--bs-success);
+}
+
+.custom-file-upload i {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 10px;
+  color: var(--bs-primary);
 }
 
 .image-input-group {
   display: flex;
-  align-items: center;
-  gap: 10px; /* Space between input and button */
+  flex-direction: column;
+  gap: 10px;
   margin-bottom: 1rem;
 }
 
-.image-preview-container {
-  margin-top: 1rem;
-  text-align: center;
+/* Folder/Inspection Card */
+.folder-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--bs-border-color, #dee2e6);
 }
 
-.image-preview-container img {
-  border: 1px solid #dee2e6;
-  border-radius: 0.25rem;
-  box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.075);
-  max-height: 400px; /* Limit height for processed image */
-  width: auto;
-  object-fit: contain;
+.folder-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
 
-/* Modules card */
-.modules-card .card-body p {
-  margin-bottom: 0.5rem;
-  color: #5a6268;
+body.dark .folder-card {
+  background-color: #2c3034;
 }
 
-.error-message {
-  color: #dc3545;
-  font-weight: 500;
-  margin-top: 1rem;
+body.dark .text-muted {
+  color: #adb5bd !important;
 }
 
-.clickable-card {
-  cursor: pointer;
+.modal-content {
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
 }
 
-.image-modal .modal-dialog {
-  z-index: 1050; /* Ensure modal appears on top */
+body.dark .modal-header, 
+body.dark .modal-footer {
+  border-color: #454d55;
 }
 
-.form-control[type="file"] {
-  background-color: #ffffff !important; /* Força o fundo branco */
-  color: #212529 !important; /* Força o texto preto */
+body.dark .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+.image-modal .modal-body {
+  max-height: 80vh;
+  overflow-y: auto;
 }

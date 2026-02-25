@@ -225,7 +225,7 @@ const Projetos: React.FC = () => {
                 <Card.Title>{project.name}</Card.Title>
                 <Card.Text className="text-muted">{project.responsible}</Card.Text>
                 <Stack direction="horizontal" gap={2} className="mt-auto">
-                  <Button variant="outline-light" size="sm" onClick={() => navigate(`/projetos/${project.id}`)}>Abrir Projeto</Button>
+                  <Button variant="primary" size="sm" onClick={() => navigate(`/projetos/${project.id}`)}>Abrir Projeto</Button>
                   {user && user.role === 'admin' && (
                     <Button variant="outline-danger" size="sm" onClick={() => handleDeleteClick(project)}>Excluir</Button>
                   )}

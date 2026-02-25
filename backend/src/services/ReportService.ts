@@ -342,7 +342,7 @@ class ReportService {
               </div>
           </div>
           <div class="footer">
-              <p>Smart Inspects - Relatório Automatizado via IA</p>
+              <p>SMART TWIN-IE - Relatório Automatizado via IA</p>
               <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
           </div>
       </body>

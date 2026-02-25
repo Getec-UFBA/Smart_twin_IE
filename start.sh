@@ -3,7 +3,7 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 echo "==========================================="
-echo "   Iniciando Smart Inspects Platform"
+echo "   Iniciando SMART TWIN-IE Platform"
 echo "==========================================="
 
 # Function to clean up background processes
