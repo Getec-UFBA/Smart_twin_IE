@@ -1,6 +1,6 @@
 @echo off
 echo ===========================================
-echo    Iniciando Smart Inspects Platform
+echo    Iniciando SMART TWIN-IE Platform
 echo ===========================================
 
 :: 1. Iniciar o serviço de IA

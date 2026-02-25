@@ -4,7 +4,7 @@ import api from '../../services/api';
 import { Container, Row, Col, Card, Button, Form, Modal, Alert } from 'react-bootstrap';
 import './style.css';
 import path from 'path-browserify';
-import { FaCog, FaPencilAlt, FaTrash } from 'react-icons/fa';
+import { FaCog, FaPencilAlt, FaTrash, FaUpload, FaDownload } from 'react-icons/fa';
 import type { IProject, IInspection, IImage, IOrthoResult } from '../../models/IProject';
 
 const ProjectView: React.FC = () => {
@@ -33,6 +33,7 @@ const ProjectView: React.FC = () => {
   const [editFormData, setEditFormData] = useState<Partial<IProject>>({});
   const [showEditInspectionModal, setShowEditInspectionModal] = useState(false);
   const [editingInspection, setEditingInspection] = useState<IInspection | null>(null);
+  const [expandedImage, setExpandedImage] = useState<{ url: string; title: string } | null>(null);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -231,6 +232,15 @@ const ProjectView: React.FC = () => {
     }
   };
 
+  const handleDownloadImage = (imageUrl: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     if (id) {
       fetchProject();
@@ -335,13 +345,6 @@ const ProjectView: React.FC = () => {
           <Button variant="primary" onClick={() => navigate(`/projetos/${id}/dashboard`)} className="me-2">
             Dashboard
           </Button>
-          <Button
-            variant="info"
-            onClick={handleGeneratePdfReport}
-            disabled={isGeneratingReport}
-          >
-            {isGeneratingReport ? 'Gerando Relatório...' : 'Gerar Relatório Geral'}
-          </Button>
         </Col>
       </Row>
       <Row>
@@ -398,23 +401,27 @@ const ProjectView: React.FC = () => {
 
               <div className="image-input-group">
                 <Form.Group controlId="formFile" className="mb-3" style={{ flex: 1 }}>
-                  <Form.Label>
-                    {processingType === 'images' 
-                      ? `Selecionar Imagens (${selectedFiles.length} arquivos)` 
-                      : 'Selecionar GeoTIFF (.tif, .tiff)'}
+                  <Form.Label className="custom-file-upload">
+                    <FaUpload />
+                    {selectedFiles.length > 0 
+                      ? `${selectedFiles.length} arquivos selecionados` 
+                      : processingType === 'images' 
+                        ? 'Clique para selecionar Imagens de Inspeção' 
+                        : 'Clique para selecionar GeoTIFF (.tif, .tiff)'}
+                    <Form.Control 
+                      type="file" 
+                      onChange={handleFileChange} 
+                      multiple={processingType === 'images'}
+                      accept={processingType === 'images' ? "image/*" : ".tif,.tiff,.jpg,.jpeg"}
+                      style={{ display: 'none' }}
+                    />
                   </Form.Label>
-                  <Form.Control 
-                    type="file" 
-                    onChange={handleFileChange} 
-                    multiple={processingType === 'images'}
-                    accept={processingType === 'images' ? "image/*" : ".tif,.tiff,.jpg,.jpeg"}
-                  />
                 </Form.Group>
                 <Button
                   variant="success"
                   onClick={handleProcess}
                   disabled={selectedFiles.length === 0 || processing || (processingType === 'ortho' && !targetInspectionId)}
-                  style={{ marginLeft: '1rem', alignSelf: 'center' }}
+                  className="w-100"
                 >
                   {processing ? 'Processando...' : processingType === 'images' ? 'Processar Imagens' : 'Processar Ortomosaico/JPEG'}
                 </Button>
@@ -567,7 +574,11 @@ const ProjectView: React.FC = () => {
                           variant="top" 
                           src={`http://localhost:3001${ortho.previewUrl}`} 
                           alt={`Preview do Ortomosaico ${index}`}
-                          style={{ maxHeight: '400px', objectFit: 'contain', backgroundColor: '#f8f9fa' }}
+                          style={{ maxHeight: '400px', objectFit: 'contain', backgroundColor: '#f8f9fa', cursor: 'pointer' }}
+                          onClick={() => setExpandedImage({ 
+                            url: `http://localhost:3001${ortho.previewUrl}`, 
+                            title: path.basename(ortho.url) 
+                          })}
                         />
                       )}
                       <Card.Body>
@@ -615,7 +626,16 @@ const ProjectView: React.FC = () => {
                     {(() => {
                       const imageUrlForDisplay = image.url ? `http://localhost:3001${image.url}` : '';
                       return imageUrlForDisplay ? (
-                        <Card.Img variant="top" src={imageUrlForDisplay} alt={`Imagem ${index}`} />
+                        <Card.Img 
+                          variant="top" 
+                          src={imageUrlForDisplay} 
+                          alt={`Imagem ${index}`} 
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setExpandedImage({ 
+                            url: imageUrlForDisplay, 
+                            title: path.basename(image.url) 
+                          })}
+                        />
                       ) : (
                         <div style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
                           Imagem não disponível
@@ -661,6 +681,38 @@ const ProjectView: React.FC = () => {
             Fechar
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* Modal para Visualização Expandida da Imagem */}
+      <Modal 
+        show={!!expandedImage} 
+        onHide={() => setExpandedImage(null)} 
+        size="xl" 
+        centered
+        className="expanded-image-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>{expandedImage?.title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center p-0">
+          {expandedImage && (
+            <>
+              <img 
+                src={expandedImage.url} 
+                alt={expandedImage.title} 
+                style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }}
+              />
+              <div className="p-3">
+                <Button 
+                  variant="success" 
+                  onClick={() => handleDownloadImage(expandedImage.url, expandedImage.title)}
+                >
+                  <FaDownload className="me-2" /> Baixar Imagem
+                </Button>
+              </div>
+            </>
+          )}
+        </Modal.Body>
       </Modal>
 
       <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg" centered>

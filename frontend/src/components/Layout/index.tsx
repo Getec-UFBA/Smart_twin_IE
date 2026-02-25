@@ -6,6 +6,7 @@ import { ThemeContext } from '../../contexts/ThemeContext';
 import ThemeToggleSwitch from '../ThemeToggleSwitch';
 import Sidebar from '../Sidebar'; 
 import './style.css';
+import logoSite from '../../assets/images/logo_site (1).png';
 
 const API_URL = 'http://localhost:3001';
 
@@ -44,9 +45,10 @@ const Layout: React.FC = () => {
                   </svg>
                 </Button>
               )}
-              <Navbar.Brand href="/" className="navbar-brand-custom">
-                <span className="d-none d-lg-block">Plataforma Gêmeo Digital</span>
-                <span className="d-lg-none">Gêmeo Digital</span>
+              <Navbar.Brand href="/" className="navbar-brand-custom d-flex align-items-center">
+                <Image src={logoSite} alt="Logo" width="30" height="30" className="me-2 d-inline-block align-top" />
+                <span className="d-none d-lg-block">SMART TWIN-IE</span>
+                <span className="d-lg-none">SMART TWIN-IE</span>
               </Navbar.Brand>
             </div>
 
@@ -91,7 +93,7 @@ const Layout: React.FC = () => {
 
         <footer className="mt-auto p-4 bg-dark text-white text-center">
           <Container>
-            <p className="mb-0">&copy; 2025 Plataforma Gêmeo Digital. Todos os direitos reservados.</p>
+            <p className="mb-0">&copy; 2026 SMART TWIN-IE. Todos os direitos reservados.</p>
           </Container>
         </footer>
       </div>
