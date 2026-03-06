@@ -1,33 +1,94 @@
 .change-password-container {
-  color: var(--bs-body-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 120px);
+  background-color: var(--bs-body-bg);
+  padding: 20px;
 }
 
 .change-password-box {
-  background: var(--bs-body-bg);
-  padding: 2.5rem;
-  border-radius: 8px;
-  margin-top: 2rem;
-  border: 1px solid var(--bs-secondary);
+  background: var(--bs-card-bg);
+  padding: 40px;
+  border-radius: 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--bs-border-color);
+  animation: fadeInScale 0.4s ease-out;
 }
 
-.change-password-box .btn-primary {
-  background-color: var(--bs-primary);
-  border-color: var(--bs-primary);
+.change-password-box h2 {
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 8px;
+  color: var(--bs-body-color);
+  letter-spacing: -0.02em;
 }
 
-.change-password-box .btn-primary:hover {
-  background-color: #146C43;
-  border-color: #146C43;
+.change-password-subtitle {
+  text-align: center;
+  color: var(--bs-secondary-color);
+  font-size: 0.95rem;
+  margin-bottom: 32px;
 }
 
-.error-message {
+.change-password-form .btn-save-password {
+  background-color: #10b981;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: white;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn-save-password:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+}
+
+.btn-save-password:active {
+  transform: translateY(0);
+}
+
+.status-alert {
+  padding: 12px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideDown 0.3s ease;
+}
+
+.status-alert.error {
+  background-color: rgba(220, 53, 69, 0.1);
   color: #dc3545;
-  text-align: center;
-  margin-bottom: 1rem;
+  border: 1px solid rgba(220, 53, 69, 0.2);
 }
 
-.success-message {
-  color: #28a745;
-  text-align: center;
-  margin-bottom: 1rem;
+.status-alert.success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

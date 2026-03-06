@@ -1,68 +1,178 @@
+/* Variáveis de Cor Premium (Paleta Verde GETEC) */
+:root {
+  --primary-green: #10b981;
+  --primary-hover: #059669;
+  --primary-soft: rgba(16, 185, 129, 0.08);
+  --bg-main: var(--bs-body-bg); /* Usa o fundo do tema global */
+  --card-bg: var(--bs-card-bg);
+  --text-main: var(--bs-body-color);
+  --text-muted: var(--bs-secondary-color, #64748b);
+  --border-color: var(--bs-border-color);
+  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --card-shadow-hover: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Container de Listagem - Transparente para usar o fundo do body */
+.projects-container {
+  min-height: 100vh;
+  background-color: transparent;
+  padding-bottom: 80px;
+}
+
+.page-header-title {
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+/* Barra de Busca e Filtros Integrada */
+.search-filter-section {
+  background: transparent;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  margin-bottom: 48px;
+}
+
+.modern-search-input {
+  border-radius: 16px !important;
+  border: 1px solid var(--border-color) !important;
+  padding: 14px 20px 14px 52px !important;
+  background-color: var(--card-bg) !important;
+  color: var(--text-main) !important;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  box-shadow: var(--card-shadow) !important;
+}
+
+.modern-search-input:focus {
+  border-color: var(--primary-green) !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1) !important;
+}
+
+.search-icon-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 20px;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Pills de Filtro */
+.filter-pills {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: var(--card-shadow);
+}
+
+.filter-pill:hover {
+  border-color: var(--primary-green);
+  color: var(--primary-green);
+}
+
+.filter-pill.active {
+  background: var(--primary-green);
+  border-color: var(--primary-green);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+/* Cards de Projeto */
 .project-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background-color: var(--bs-card-bg);
-  border: 1px solid var(--bs-border-color);
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background-color: var(--card-bg);
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--card-shadow);
+  height: 100%;
 }
 
 .project-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.3);
+  transform: translateY(-8px);
+  box-shadow: var(--card-shadow-hover);
 }
 
-.project-card .card-title {
-  color: var(--bs-body-color);
-  font-weight: bold;
+.project-card-img-wrapper {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
 }
 
 .project-card .card-img-top {
-  height: 200px;
+  height: 100%;
+  width: 100%;
   object-fit: cover;
 }
 
-body.dark .display-4 {
-  color: #fff;
-}
-
-body.dark .text-muted {
-  color: #adb5bd !important;
-}
-
-.success-message {
-  color: var(--bs-primary);
-  font-weight: bold;
-  margin-bottom: 1rem;
-}
-
-.error-message {
-  color: #dc3545;
-  font-weight: bold;
-  margin-bottom: 1rem;
-}
-
-/* Custom styles for OAE section in modal */
-.oae-section {
-  border: 1px solid var(--bs-border-color);
-  padding: 1rem;
-  border-radius: 0.5rem;
-  margin-top: 1rem;
-}
-
-.oae-item {
-  position: relative;
-  padding: 1rem;
-  border: 1px solid var(--bs-border-color);
-  border-radius: 0.25rem;
-  margin-bottom: 1rem;
-  background-color: rgba(0,0,0,0.05);
-}
-
-body.dark .oae-item {
-  background-color: rgba(255,255,255,0.05);
-}
-
-.oae-item .btn-close {
+.project-card-overlay {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.module-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-green);
+  font-size: 1rem;
+}
+
+body.dark .module-badge {
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.project-card .card-body {
+  padding: 24px;
+}
+
+.project-card .card-title {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Botões */
+.btn-primary {
+  background-color: var(--primary-green) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 10px 20px !important;
+  font-weight: 600 !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+/* Empty State */
+.empty-state-card {
+  padding: 60px;
+  text-align: center;
+  border: 2px dashed var(--border-color);
+  border-radius: 24px;
+  color: var(--text-muted);
 }

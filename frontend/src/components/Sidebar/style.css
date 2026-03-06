@@ -1,57 +1,116 @@
 .sidebar {
-  width: 250px;
+  width: 260px;
   height: 100vh;
   position: fixed;
-  top: 56px; /* Altura do Navbar */
+  top: 56px;
   left: 0;
   background-color: var(--bs-body-bg);
-  padding-top: 20px;
-  transition: all 0.3s ease-in-out;
+  padding: 24px 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
-  border-right: 1px solid var(--bs-secondary);
+  border-right: 1px solid var(--bs-border-color);
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
 }
 
 .sidebar.closed {
-  width: 70px;
+  width: 0;
+  transform: translateX(-100%);
+  border-right: none;
+}
+
+/* Rótulos de Seção */
+.sidebar-section-label {
+  padding: 0 24px;
+  margin-bottom: 12px;
+  margin-top: 24px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--bs-secondary-color);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.sidebar.closed .sidebar-section-label {
+  opacity: 0;
+  height: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Links de Navegação */
+.sidebar .nav-link {
+  color: var(--bs-body-color);
+  padding: 12px 24px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  position: relative;
+  transition: all 0.2s ease;
+  margin: 2px 12px;
+  border-radius: 12px;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.sidebar .nav-link svg {
+  font-size: 1.25rem;
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar.closed .nav-link {
+  padding: 12px 0;
+  justify-content: center;
+  margin: 4px 0; /* Removida margem lateral para centralizar no 80px */
+  border-radius: 0; /* No modo ícone, borda reta fica melhor ou removida */
+  gap: 0;
 }
 
 .sidebar.closed .nav-link span {
   display: none;
 }
 
-.sidebar.open {
-  width: 250px;
-}
-
-.sidebar .nav-link {
-  color: var(--bs-body-color);
-  padding: 10px 20px;
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-}
-
-.sidebar .nav-link svg {
-  margin-right: 15px;
-  min-width: 20px;
-  text-align: center;
-}
-
-.sidebar.closed .nav-link {
-  justify-content: center;
-}
-
-.sidebar.closed .nav-link svg {
-  margin-right: 0;
-}
-
+/* Hover State */
 .sidebar .nav-link:hover {
-  background-color: var(--bs-secondary);
-  color: var(--bs-body-color);
+  background-color: rgba(16, 185, 129, 0.05);
+  color: #10b981;
 }
 
+/* Active State */
 .sidebar .nav-link.active {
-  background-color: var(--bs-primary); /* Cor primária */
-  color: #fff;
-  font-weight: bold;
+  background-color: rgba(16, 185, 129, 0.08);
+  color: #10b981;
+  font-weight: 600;
+}
+
+/* Barra vertical de destaque no item ativo */
+.sidebar .nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 20%;
+  height: 60%;
+  width: 4px;
+  background-color: #10b981;
+  border-radius: 0 4px 4px 0;
+  transition: all 0.3s;
+}
+
+/* Quando fechada, a barra de destaque fica grudada na esquerda da tela */
+.sidebar.closed .nav-link.active::before {
+  left: 0;
+  height: 100%;
+  top: 0;
+  width: 3px;
+}
+
+body.dark .sidebar .nav-link.active {
+  background-color: rgba(16, 185, 129, 0.15);
 }

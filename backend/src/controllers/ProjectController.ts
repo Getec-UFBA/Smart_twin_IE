@@ -41,29 +41,51 @@ class ProjectController {
 
   public processImagesForResults = async (req: AuthRequest, res: Response): Promise<Response> => {
     const files = req.files as Express.Multer.File[];
+    const { projectId, inspectionId } = req.body;
+
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'Nenhum arquivo de imagem enviado.' });
     }
 
     const imageProcessingService = new ImageProcessingService();
-    const reviewId = randomUUID();
-    const reviewDir = path.join(uploadConfig.reviewsDirectory, reviewId);
+    const projectService = new ProjectService();
+    
+    // Se não houver projeto/inspeção, cria uma revisão pendente (Legado ou se necessário)
+    // Mas agora priorizamos o salvamento direto
+    const isDirectSave = !!(projectId && inspectionId);
+    const reviewId = !isDirectSave ? randomUUID() : null;
+    const reviewDir = reviewId ? path.join(uploadConfig.reviewsDirectory, reviewId) : null;
+    
+    if (reviewDir) {
+      await fs.mkdir(reviewDir, { recursive: true });
+    }
+
     const errors: { fileName: string; error: string }[] = [];
     let processedCount = 0;
-
-    await fs.mkdir(reviewDir, { recursive: true });
 
     for (const file of files) {
       try {
         const { processedImageBase64, detections } = await this.getProcessedImageData(file.path, imageProcessingService);
         
-        const imageBuffer = Buffer.from(processedImageBase64, 'base64');
-        const imageId = randomUUID();
-        const imageFileName = `${imageId}.jpeg`;
-        const jsonFileName = `${imageId}.json`;
+        if (isDirectSave) {
+          // SALVAMENTO DIRETO NA INSPEÇÃO
+          await projectService.saveReviewedImage({
+            projectId,
+            inspectionId,
+            base64Data: processedImageBase64,
+            detections,
+            originalFileName: file.originalname
+          });
+        } else if (reviewDir && reviewId) {
+          // FLUXO DE REVISÃO (LEGADO)
+          const imageBuffer = Buffer.from(processedImageBase64, 'base64');
+          const imageId = randomUUID();
+          const imageFileName = `${imageId}.jpeg`;
+          const jsonFileName = `${imageId}.json`;
 
-        await fs.writeFile(path.join(reviewDir, imageFileName), imageBuffer);
-        await fs.writeFile(path.join(reviewDir, jsonFileName), JSON.stringify({ detections, originalFileName: file.originalname }));
+          await fs.writeFile(path.join(reviewDir, imageFileName), imageBuffer);
+          await fs.writeFile(path.join(reviewDir, jsonFileName), JSON.stringify({ detections, originalFileName: file.originalname }));
+        }
         
         processedCount++;
       } catch (error) {
@@ -79,6 +101,13 @@ class ProjectController {
       return res.status(500).json({
         message: 'Todos os arquivos falharam ao processar.',
         errors: errors,
+      });
+    }
+
+    if (isDirectSave) {
+      return res.status(200).json({
+        message: `Sucesso: ${processedCount} imagens processadas e salvas diretamente.`,
+        errors: errors.length > 0 ? errors : undefined,
       });
     }
 

@@ -2,87 +2,161 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-grow: 1; /* Para ocupar o espaço disponível no Layout */
+  min-height: calc(100vh - 120px);
+  background-color: var(--bs-body-bg);
+  padding: 20px;
 }
 
 .login-box {
-  background: var(--bs-body-bg); /* Usa a cor de fundo do corpo */
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--bs-card-bg);
+  padding: 48px;
+  border-radius: 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
   width: 100%;
-  max-width: 400px;
-  color: var(--bs-body-color); /* Usa a cor do texto do corpo */
-  border: 1px solid var(--bs-secondary);
+  max-width: 440px;
+  border: 1px solid var(--bs-border-color);
+  display: flex;
+  flex-direction: column;
+  animation: fadeInScale 0.4s ease-out;
 }
 
-h2 {
+.login-logo-header {
   text-align: center;
-  margin-bottom: 1.5rem;
-  color: var(--bs-body-color); /* Título com a cor do corpo */
+  margin-bottom: 32px;
 }
 
-.input-group {
-  margin-bottom: 1rem;
+.login-logo-header img {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 4px 6px rgba(16, 185, 129, 0.2));
 }
 
-.input-group label {
+.login-box h2 {
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 8px;
+  color: var(--bs-body-color);
+  letter-spacing: -0.02em;
+}
+
+.login-subtitle {
+  text-align: center;
+  color: var(--bs-secondary-color);
+  font-size: 0.95rem;
+  margin-bottom: 32px;
+}
+
+.login-form .input-group-custom {
+  margin-bottom: 20px;
+}
+
+.input-group-custom label {
   display: block;
-  margin-bottom: 0.5rem;
-  color: var(--bs-body-color); /* Labels com a cor do corpo */
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.input-group input {
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 16px;
+  color: #10b981;
+  font-size: 1.1rem;
+}
+
+.input-group-custom input {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--bs-secondary);
-  border-radius: 4px;
+  padding: 14px 16px 14px 48px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 14px;
   background-color: var(--bs-body-bg);
   color: var(--bs-body-color);
-  border-color: var(--bs-secondary);
+  font-size: 1rem;
+  transition: all 0.2s ease;
 }
 
-.input-group input::placeholder {
-  color: var(--bs-secondary);
+.input-group-custom input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
 }
 
 .login-button {
   width: 100%;
-  padding: 0.75rem;
+  padding: 14px;
   border: none;
-  border-radius: 4px;
-  background-color: var(--bs-primary); /* Verde */
+  border-radius: 14px;
+  background-color: #10b981;
   color: white;
-  font-size: 1rem;
+  font-weight: 700;
+  font-size: 1.05rem;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.2s;
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
 }
 
 .login-button:hover {
-  background-color: #146C43; /* Verde mais escuro */
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+}
+
+.login-button:active {
+  transform: translateY(0);
 }
 
 .error-message {
-  color: #dc3545; /* Vermelho padrão para erros */
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-.complete-registration-link {
-  text-align: center;
-  margin-top: 1.5rem;
-}
-
-.complete-registration-link p {
-  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.2);
   font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 24px;
 }
 
-.complete-registration-link a {
-  color: var(--bs-primary); /* Verde para o link */
+.login-footer-links {
+  text-align: center;
+  margin-top: 32px;
+  border-top: 1px solid var(--bs-border-color);
+  padding-top: 24px;
+}
+
+.login-footer-links p {
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color);
+}
+
+.login-footer-links a {
+  color: #10b981;
   text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
 }
 
-.complete-registration-link a:hover {
+.login-footer-links a:hover {
+  color: #059669;
   text-decoration: underline;
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }

@@ -2,32 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Image } from 'react-bootstrap';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { FaUser, FaBuilding, FaInfoCircle, FaCamera, FaSave, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import './style.css';
 
 const Profile: React.FC = () => {
-  const { user, token, updateUser } = useAuth(); // Pega a função updateUser
+  const { user, updateUser } = useAuth();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Inicializa o formulário com os dados do contexto, se existirem
     if (user) {
       setName(user.name || '');
       setCompany(user.company || '');
       setBio(user.bio || '');
       if (user.avatarUrl) {
-        // Assume que o avatarUrl no contexto já é o caminho relativo
         setAvatarUrl(`http://localhost:3001/files/${user.avatarUrl}`);
       }
     }
   }, [user]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
+    if (e.target.files && e.target.files[0]) {
       const data = new FormData();
       data.append('avatar', e.target.files[0]);
 
@@ -38,11 +38,12 @@ const Profile: React.FC = () => {
         if (updatedUser.avatarUrl) {
           setAvatarUrl(`http://localhost:3001/files/${updatedUser.avatarUrl}`);
         }
-        // Atualiza o usuário no contexto global
         updateUser(updatedUser);
-        setSuccess('Avatar atualizado com sucesso!');
+        setSuccess('Foto de perfil atualizada!');
+        setTimeout(() => setSuccess(null), 3000);
       } catch (err) {
         setError('Erro ao atualizar o avatar.');
+        setTimeout(() => setError(null), 3000);
       }
     }
   };
@@ -51,62 +52,113 @@ const Profile: React.FC = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setLoading(true);
     try {
       const response = await api.put(`/profile/me`, { name, company, bio });
-      // Atualiza o usuário no contexto global
       updateUser(response.data);
       setSuccess('Perfil atualizado com sucesso!');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Erro ao atualizar o perfil.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Container className="profile-container">
-      <Row className="justify-content-md-center">
-        <Col md={8}>
-          <div className="profile-box">
-            <h2 className="text-center mb-4">Meu Perfil</h2>
+    <div className="profile-container">
+      <div className="profile-card">
+        {/* HEADER DO PERFIL */}
+        <header className="profile-header">
+          <div className="avatar-wrapper">
+            <Image 
+              src={avatarUrl || 'https://via.placeholder.com/150'} 
+              className="avatar-image" 
+            />
+            <label htmlFor="avatar-upload" className="avatar-edit-btn">
+              <FaCamera />
+              <input 
+                id="avatar-upload" 
+                type="file" 
+                className="d-none" 
+                onChange={handleAvatarChange} 
+              />
+            </label>
+          </div>
+          <h2 className="profile-name-display">{name || 'Seu Nome'}</h2>
+          <span className="profile-email-display">{user?.email}</span>
+        </header>
 
-            <div className="avatar-section text-center mb-4">
-              <Image src={avatarUrl || 'https://via.placeholder.com/150'} roundedCircle className="avatar-image" />
-              <Form.Group controlId="formFile" className="mt-3">
-                <Form.Label className="avatar-label">Mudar Foto de Perfil</Form.Label>
-                <Form.Control type="file" onChange={handleAvatarChange} />
-              </Form.Group>
+        {/* CONTEÚDO DO PERFIL */}
+        <div className="profile-content">
+          {error && (
+            <div className="status-alert error">
+              <FaExclamationCircle /> {error}
+            </div>
+          )}
+          {success && (
+            <div className="status-alert success">
+              <FaCheckCircle /> {success}
+            </div>
+          )}
+
+          <Form onSubmit={handleSubmit} className="registration-form">
+            <div className="form-section-title">Informações Pessoais</div>
+            
+            <div className="input-group-custom">
+              <label>Nome Completo</label>
+              <div className="input-wrapper">
+                <FaUser className="input-icon" />
+                <Form.Control 
+                  type="text" 
+                  placeholder="Seu nome"
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                />
+              </div>
             </div>
 
-            <Form onSubmit={handleSubmit}>
-              {error && <p className="error-message">{error}</p>}
-              {success && <p className="success-message">{success}</p>}
+            <div className="input-group-custom">
+              <label>Empresa / Instituição</label>
+              <div className="input-wrapper">
+                <FaBuilding className="input-icon" />
+                <Form.Control 
+                  type="text" 
+                  placeholder="Nome da empresa"
+                  value={company} 
+                  onChange={e => setCompany(e.target.value)} 
+                />
+              </div>
+            </div>
 
-              <Form.Group as={Row} className="mb-3" controlId="formName">
-                <Form.Label column sm={2}>Nome</Form.Label>
-                <Col sm={10}>
-                  <Form.Control type="text" value={name} onChange={e => setName(e.target.value)} />
-                </Col>
-              </Form.Group>
+            <div className="form-section-title">Sobre Você</div>
 
-              <Form.Group as={Row} className="mb-3" controlId="formCompany">
-                <Form.Label column sm={2}>Empresa</Form.Label>
-                <Col sm={10}>
-                  <Form.Control type="text" value={company} onChange={e => setCompany(e.target.value)} />
-                </Col>
-              </Form.Group>
+            <div className="input-group-custom">
+              <label>Biografia</label>
+              <div className="input-wrapper">
+                <FaInfoCircle className="input-icon" style={{ top: '16px', transform: 'none' }} />
+                <Form.Control 
+                  as="textarea" 
+                  rows={4} 
+                  placeholder="Conte um pouco sobre sua atuação técnica..."
+                  value={bio} 
+                  onChange={e => setBio(e.target.value)} 
+                  style={{ paddingLeft: '44px' }}
+                />
+              </div>
+            </div>
 
-              <Form.Group as={Row} className="mb-3" controlId="formBio">
-                <Form.Label column sm={2}>Bio</Form.Label>
-                <Col sm={10}>
-                  <Form.Control as="textarea" rows={3} value={bio} onChange={e => setBio(e.target.value)} />
-                </Col>
-              </Form.Group>
-
-              <Button variant="primary" type="submit" className="w-100 mt-3">Salvar Alterações</Button>
-            </Form>
-          </div>
-        </Col>
-      </Row>
-    </Container>
+            <Button 
+              type="submit" 
+              className="btn-save-profile w-100" 
+              disabled={loading}
+            >
+              {loading ? 'Salvando...' : <><FaSave /> Salvar Alterações</>}
+            </Button>
+          </Form>
+        </div>
+      </div>
+    </div>
   );
 };
 

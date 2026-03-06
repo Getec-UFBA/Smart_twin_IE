@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import PasswordInput from '../../components/PasswordInput'; // Importa o PasswordInput
+import PasswordInput from '../../components/PasswordInput';
+import { FaEnvelope, FaKey, FaArrowRight, FaCheckCircle, FaExclamationCircle, FaQuestionCircle } from 'react-icons/fa';
 import './style.css';
 
 const API_URL = 'http://localhost:3001';
@@ -16,10 +17,12 @@ const ForgotPassword = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/auth/security-question/${email}`);
       setSecurityQuestion(response.data.securityQuestion);
@@ -27,6 +30,8 @@ const ForgotPassword = () => {
     } catch (err) {
       setError('Email não encontrado ou sem pergunta de segurança configurada.');
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -39,6 +44,7 @@ const ForgotPassword = () => {
       return;
     }
 
+    setLoading(true);
     try {
       await axios.post(`${API_URL}/auth/reset-password-with-answer`, {
         email,
@@ -54,6 +60,8 @@ const ForgotPassword = () => {
         setError('Erro desconhecido ao redefinir a senha.');
       }
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,31 +69,64 @@ const ForgotPassword = () => {
     switch (stage) {
       case 'enter_email':
         return (
-          <form onSubmit={handleEmailSubmit}>
+          <form onSubmit={handleEmailSubmit} className="forgot-password-form">
             <h2>Esqueci Minha Senha</h2>
-            <p>Informe seu email para continuar.</p>
-            {error && <p className="error-message">{error}</p>}
-            <div className="input-group">
+            <p>Informe seu email para recuperar o acesso à sua conta.</p>
+            {error && (
+              <div className="status-alert error d-flex align-items-center gap-2 justify-content-center">
+                <FaExclamationCircle /> {error}
+              </div>
+            )}
+            <div className="input-group-custom">
               <label htmlFor="email">Email</label>
-              <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} required />
+              <div className="input-wrapper">
+                <FaEnvelope className="input-icon" />
+                <input 
+                  type="email" 
+                  id="email" 
+                  placeholder="seu@email.com"
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  required 
+                />
+              </div>
             </div>
-            <button type="submit" className="forgot-password-button">Continuar</button>
+            <button type="submit" className="forgot-password-button" disabled={loading}>
+              {loading ? 'Processando...' : <><FaArrowRight /> Continuar</>}
+            </button>
           </form>
         );
       case 'answer_question':
         return (
-          <form onSubmit={handleResetSubmit}>
+          <form onSubmit={handleResetSubmit} className="forgot-password-form">
             <h2>Pergunta de Segurança</h2>
-            <p className="security-question-text">{securityQuestion}</p>
-            {error && <p className="error-message">{error}</p>}
-            <div className="input-group">
+            <p>Responda à pergunta abaixo para redefinir sua senha.</p>
+            <div className="security-question-text d-flex align-items-center justify-content-center gap-2">
+              <FaQuestionCircle /> {securityQuestion}
+            </div>
+            {error && (
+              <div className="status-alert error d-flex align-items-center gap-2 justify-content-center">
+                <FaExclamationCircle /> {error}
+              </div>
+            )}
+            <div className="input-group-custom">
               <label htmlFor="securityAnswer">Sua Resposta</label>
-              <input type="text" id="securityAnswer" value={securityAnswer} onChange={e => setSecurityAnswer(e.target.value)} required />
+              <div className="input-wrapper">
+                <FaKey className="input-icon" />
+                <input 
+                  type="text" 
+                  id="securityAnswer" 
+                  placeholder="Sua resposta"
+                  value={securityAnswer} 
+                  onChange={e => setSecurityAnswer(e.target.value)} 
+                  required 
+                />
+              </div>
             </div>
             <PasswordInput
               id="newPassword"
               name="newPassword"
-              label="Nova Senha"
+              label="Senha"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               required
@@ -93,19 +134,22 @@ const ForgotPassword = () => {
             <PasswordInput
               id="confirmPassword"
               name="confirmPassword"
-              label="Confirmar Nova Senha"
+              label="Confirme a senha"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               required
             />
-            <button type="submit" className="forgot-password-button">Redefinir Senha</button>
+            <button type="submit" className="forgot-password-button" disabled={loading}>
+              {loading ? 'Redefinindo...' : <><FaCheckCircle /> Redefinir Senha</>}
+            </button>
           </form>
         );
       case 'success':
         return (
-          <div className="success-container">
+          <div className="success-container animate-fade-in">
+            <FaCheckCircle className="success-icon" />
             <h2>Senha Redefinida!</h2>
-            <p>Sua senha foi alterada com sucesso.</p>
+            <p>Sua senha foi alterada com sucesso. Você já pode acessar sua conta.</p>
             <Link to="/login" className="forgot-password-button">Ir para o Login</Link>
           </div>
         );

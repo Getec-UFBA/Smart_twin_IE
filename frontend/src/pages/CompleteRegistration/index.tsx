@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import PasswordInput from '../../components/PasswordInput'; // Importa o PasswordInput
+import PasswordInput from '../../components/PasswordInput';
+import { FaEnvelope, FaShieldAlt, FaKey, FaUserCheck, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
 import './style.css';
 
 const API_URL = 'http://localhost:3001';
@@ -21,6 +22,7 @@ const CompleteRegistration: React.FC = () => {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,6 +35,7 @@ const CompleteRegistration: React.FC = () => {
       return;
     }
 
+    setLoading(true);
     try {
       await axios.post(`${API_URL}/users/complete-registration`, {
         email,
@@ -41,7 +44,7 @@ const CompleteRegistration: React.FC = () => {
         securityQuestion: question,
         securityAnswer: answer,
       });
-      setSuccess('Cadastro finalizado com sucesso! Você será redirecionado para o login.');
+      setSuccess('Cadastro finalizado com sucesso! Redirecionando...');
       setTimeout(() => {
         navigate('/login');
       }, 3000);
@@ -52,50 +55,92 @@ const CompleteRegistration: React.FC = () => {
         setError('Erro desconhecido ao finalizar o cadastro.');
       }
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="complete-registration-container">
-      <div className="complete-registration-box">
+      <div className="complete-registration-box animate-fade-in">
         <h2>Finalizar Cadastro</h2>
-        <p>Defina sua senha e uma pergunta de segurança.</p>
-        <form onSubmit={handleSubmit}>
-          {error && <p className="error-message">{error}</p>}
-          {success && <p className="success-message">{success}</p>}
+        <p className="subtitle">Defina sua senha e uma pergunta de segurança para proteger sua conta.</p>
+        
+        <form onSubmit={handleSubmit} className="registration-form">
+          {error && (
+            <div className="status-alert error d-flex align-items-center gap-2 justify-content-center">
+              <FaExclamationCircle /> {error}
+            </div>
+          )}
+          {success && (
+            <div className="status-alert success d-flex align-items-center gap-2 justify-content-center">
+              <FaCheckCircle /> {success}
+            </div>
+          )}
 
-          <div className="input-group">
+          <div className="input-group-custom">
             <label htmlFor="email">Email</label>
-            <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} required />
+            <div className="input-wrapper">
+              <FaEnvelope className="input-icon" />
+              <input 
+                type="email" 
+                id="email" 
+                placeholder="seu@email.com"
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                required 
+              />
+            </div>
           </div>
+
           <PasswordInput
             id="password"
             name="password"
-            label="Nova Senha"
+            label="Senha"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
           />
+
           <PasswordInput
             id="confirmPassword"
             name="confirmPassword"
-            label="Confirmar Nova Senha"
+            label="Confirme a senha"
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             required
           />
-          <div className="input-group">
+
+          <div className="input-group-custom">
             <label htmlFor="securityQuestion">Pergunta de Segurança</label>
-            <select id="securityQuestion" value={question} onChange={e => setQuestion(e.target.value)} required>
-              {securityQuestions.map(q => <option key={q} value={q}>{q}</option>)}
-            </select>
+            <div className="input-wrapper">
+              <FaShieldAlt className="input-icon" />
+              <select id="securityQuestion" value={question} onChange={e => setQuestion(e.target.value)} required>
+                {securityQuestions.map(q => <option key={q} value={q}>{q}</option>)}
+              </select>
+            </div>
           </div>
-          <div className="input-group">
+
+          <div className="input-group-custom">
             <label htmlFor="securityAnswer">Sua Resposta</label>
-            <input type="text" id="securityAnswer" value={answer} onChange={e => setAnswer(e.target.value)} required />
+            <div className="input-wrapper">
+              <FaKey className="input-icon" />
+              <input 
+                type="text" 
+                id="securityAnswer" 
+                placeholder="Digite sua resposta"
+                value={answer} 
+                onChange={e => setAnswer(e.target.value)} 
+                required 
+              />
+            </div>
           </div>
-          <button type="submit" className="complete-registration-button">Finalizar Cadastro</button>
+
+          <button type="submit" className="complete-registration-button" disabled={loading}>
+            {loading ? 'Processando...' : <><FaUserCheck /> Finalizar Cadastro</>}
+          </button>
         </form>
+
         <div className="back-to-login">
           <Link to="/login">Voltar para o Login</Link>
         </div>

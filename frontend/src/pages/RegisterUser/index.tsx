@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../../services/api';
+import { FaEnvelope, FaShieldAlt, FaUserPlus, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import './style.css';
 
 const RegisterUser: React.FC = () => {
@@ -7,17 +8,17 @@ const RegisterUser: React.FC = () => {
   const [role, setRole] = useState<'admin' | 'user'>('user');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setLoading(true);
 
     try {
-      // A autenticação do admin já é feita pelo token no header (configurado no AuthContext)
-      // e pela proteção da rota no backend
       await api.post('/users/pre-register', { email, role });
-      setSuccess(`Usuário ${email} pré-cadastrado com sucesso!`);
+      setSuccess(`O convite para ${email} foi enviado com sucesso!`);
       setEmail('');
       setRole('user');
     } catch (err) {
@@ -27,36 +28,58 @@ const RegisterUser: React.FC = () => {
         setError('Erro desconhecido ao pré-cadastrar usuário.');
       }
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="register-user-container">
-      <div className="register-user-box">
-        <h2>Pré-cadastrar Usuário</h2>
-        <form onSubmit={handleSubmit}>
-          {error && <p className="error-message">{error}</p>}
-          {success && <p className="success-message">{success}</p>}
+      <div className="register-user-box animate-fade-in">
+        <h2>Pré-cadastro</h2>
+        <p className="register-user-subtitle">Adicione novos membros à plataforma SMART TWIN-IE</p>
+        
+        <form onSubmit={handleSubmit} className="register-form">
+          {error && (
+            <div className="status-alert error d-flex align-items-center gap-2 justify-content-center">
+              <FaExclamationCircle /> {error}
+            </div>
+          )}
+          {success && (
+            <div className="status-alert success d-flex align-items-center gap-2 justify-content-center">
+              <FaCheckCircle /> {success}
+            </div>
+          )}
 
-          <div className="input-group">
-            <label htmlFor="email">Email do Novo Usuário</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-            />
+          <div className="input-group-custom">
+            <label htmlFor="email">E-mail institucional</label>
+            <div className="input-wrapper">
+              <FaEnvelope className="input-icon" />
+              <input
+                type="email"
+                id="email"
+                placeholder="exemplo@ufba.br"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+            </div>
           </div>
-          <div className="input-group">
-            <label htmlFor="role">Tipo de Acesso</label>
-            <select id="role" name="role" value={role} onChange={e => setRole(e.target.value as 'admin' | 'user')}>
-              <option value="user">Usuário Comum</option>
-              <option value="admin">Administrador</option>
-            </select>
+
+          <div className="input-group-custom">
+            <label htmlFor="role">Nível de Acesso</label>
+            <div className="input-wrapper">
+              <FaShieldAlt className="input-icon" />
+              <select id="role" value={role} onChange={e => setRole(e.target.value as 'admin' | 'user')}>
+                <option value="user">Usuário</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
           </div>
-          <button type="submit" className="register-button">Pré-cadastrar</button>
+
+          <button type="submit" className="register-button" disabled={loading}>
+            {loading ? 'Processando...' : <><FaUserPlus /> Pré-cadastrar</>}
+          </button>
         </form>
       </div>
     </div>
