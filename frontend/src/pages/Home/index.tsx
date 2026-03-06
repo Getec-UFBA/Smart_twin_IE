@@ -4,123 +4,113 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './style.css';
 import logoSite from '../../assets/images/logo_site (1).png';
-import { FaRobot, FaMapMarkedAlt, FaCube, FaChartLine, FaArrowRight, FaLock } from 'react-icons/fa';
+import { 
+  FaRobot, FaMapMarkedAlt, FaCube, FaChartLine, 
+  FaArrowRight, FaLock, FaExternalLinkAlt 
+} from 'react-icons/fa';
 
 const Home: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   return (
-    <Container fluid className="home-container px-4">
+    <div className="home-container">
       {/* Hero Section */}
-      <Row className="align-items-center text-center text-md-start mb-4 py-4 hero-section">
-        <Col md={4} className="text-center">
-          <Image src={logoSite} alt="SMART TWIN-IE Logo" fluid className="home-logo shadow-drop" />
-        </Col>
-        <Col md={8}>
-          <h1 className="display-2 fw-bold platform-title">
-            SMART <span className="text-success">TWIN</span>-I<span className="text-success">E</span>
-          </h1>
-          <h2 className="display-6 subtitle-home">Gêmeos Digitais na Construção Civil</h2>
-        </Col>
-      </Row>
+      <section className="hero-section">
+        <Container>
+          <Row className="align-items-center text-center text-lg-start">
+            <Col lg={4} className="text-center mb-5 mb-lg-0">
+              <Image src={logoSite} alt="SMART TWIN-IE Logo" className="home-logo" />
+            </Col>
+            <Col lg={8}>
+              <h1 className="platform-title">
+                SMART <span className="text-green">TWIN</span>-I<span className="text-green">E</span>
+              </h1>
+              <h2 className="subtitle-home">Gêmeos Digitais e Inspeção Estrutural Inteligente</h2>
+            </Col>
+          </Row>
+        </Container>
+      </section>
 
-      {/* Funcionalidades em Containers/Cards */}
-      <h2 className="text-center mb-5 fw-bold">Funcionalidades da Plataforma</h2>
-      <Row className="g-4 mb-5">
-        <Col lg={3} md={6}>
-          <Card className="h-100 functionality-card border-0 shadow-sm">
-            <Card.Body className="text-center p-4">
-              <div className="icon-circle mb-3 bg-success-soft">
-                <FaRobot className="text-success fs-2" />
-              </div>
-              <Card.Title className="fw-bold mb-3">Inspeção por IA</Card.Title>
-              <Card.Text className="text-muted">
-                Detecção automatizada de patologias em fachadas e telhados utilizando modelos de Deep Learning.
-              </Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
+      <Container>
+        {/* Funcionalidades */}
+        <h2 className="section-title text-center">Tecnologia de Ponta</h2>
+        <Row className="g-4 mb-5">
+          <Col lg={3} md={6}>
+            <Card className="functionality-card border-0">
+              <Card.Body>
+                <div className="icon-box-premium"><FaRobot /></div>
+                <h4 className="fw-bold mb-3">Inspeção por IA</h4>
+                <p className="text-muted mb-0">Detecção automatizada de patologias com modelos YOLOv8 otimizados para engenharia.</p>
+              </Card.Body>
+            </Card>
+          </Col>
 
-        <Col lg={3} md={6}>
-          <Card className="h-100 functionality-card border-0 shadow-sm">
-            <Card.Body className="text-center p-4">
-              <div className="icon-circle mb-3 bg-primary-soft">
-                <FaMapMarkedAlt className="text-primary fs-2" />
-              </div>
-              <Card.Title className="fw-bold mb-3">Ortomosaicos</Card.Title>
-              <Card.Text className="text-muted">
-                Processamento de Ortomosaicos com mapeamento de danos georreferenciados.
-              </Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
+          <Col lg={3} md={6}>
+            <Card className="functionality-card border-0">
+              <Card.Body>
+                <div className="icon-box-premium"><FaMapMarkedAlt /></div>
+                <h4 className="fw-bold mb-3">Ortomosaicos</h4>
+                <p className="text-muted mb-0">Mapeamento georreferenciado de danos em ortofotos de alta resolução.</p>
+              </Card.Body>
+            </Card>
+          </Col>
 
-        <Col lg={3} md={6}>
-          <Card className="h-100 functionality-card border-0 shadow-sm">
-            <Card.Body className="text-center p-4">
-              <div className="icon-circle mb-3 bg-info-soft">
-                <FaCube className="text-info fs-2" />
-              </div>
-              <Card.Title className="fw-bold mb-3">Integração BIM</Card.Title>
-              <Card.Text className="text-muted">
-                Conexão entre dados de inspeção e modelos BIM, facilitando o ciclo de vida do Gêmeo Digital.
-              </Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
+          <Col lg={3} md={6}>
+            <Card className="functionality-card border-0">
+              <Card.Body>
+                <div className="icon-box-premium"><FaCube /></div>
+                <h4 className="fw-bold mb-3">Gêmeos Digitais</h4>
+                <p className="text-muted mb-0">Integração completa com modelos BIM para gestão do ciclo de vida da estrutura.</p>
+              </Card.Body>
+            </Card>
+          </Col>
 
-        <Col lg={3} md={6}>
-          <Card className="h-100 functionality-card border-0 shadow-sm">
-            <Card.Body className="text-center p-4">
-              <div className="icon-circle mb-3 bg-warning-soft">
-                <FaChartLine className="text-warning fs-2" />
-              </div>
-              <Card.Title className="fw-bold mb-3">Dashboards</Card.Title>
-              <Card.Text className="text-muted">
-                Visualização analítica de dados e indicadores de progresso para suporte à tomada de decisão.
-              </Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+          <Col lg={3} md={6}>
+            <Card className="functionality-card border-0">
+              <Card.Body>
+                <div className="icon-box-premium"><FaChartLine /></div>
+                <h4 className="fw-bold mb-3">Analytics</h4>
+                <p className="text-muted mb-0">Dashboards analíticos com indicadores de severidade e evolução temporal.</p>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
 
-      {/* Quick Access Card - Now as a separate section for better fluidity */}
-      <div className="access-section">
-        <Card className="access-card border-0 shadow-lg">
-          <Card.Body className="p-4 d-flex align-items-center gap-4 flex-column flex-sm-row text-center text-sm-start">
-            <div className="access-icon-wrapper">
-              {user ? <FaArrowRight className="text-success fs-3" /> : <FaLock className="text-primary fs-3" />}
+        {/* Access Banner (CTA) */}
+        <div className="access-section">
+          <div className="access-banner">
+            <div className="access-content">
+              <h3>{user ? `Bem-vindo, ${user.name || 'Usuário'}!` : 'Pronto para começar?'}</h3>
+              <p>{user ? 'Acesse seu painel administrativo para gerenciar seus projetos.' : 'Entre na plataforma para utilizar nossas ferramentas de IA e Gêmeos Digitais.'}</p>
             </div>
-            <div className="flex-grow-1">
-              <h4 className="fw-bold mb-1">{user ? 'Bem-vindo de volta!' : 'Pronto para começar?'}</h4>
-              <p className="text-muted mb-0 small">{user ? 'Continue gerenciando seus projetos e inspeções.' : 'Entre com sua conta para acessar os módulos exclusivos.'}</p>
-            </div>
-            <Button 
-              variant={user ? "success" : "primary"} 
-              size="lg"
+            <button 
+              className="btn-cta"
               onClick={() => navigate(user ? '/projetos' : '/login')}
-              className="px-5 fw-bold mt-3 mt-sm-0 shadow-sm"
             >
-              {user ? 'Acesse seus Projetos' : 'Fazer Login'}
-            </Button>
-          </Card.Body>
-        </Card>
-      </div>
+              {user ? <><FaArrowRight className="me-2" /> Ir para Projetos</> : <><FaLock className="me-2" /> Acessar Plataforma</>}
+            </button>
+          </div>
+        </div>
 
-      {/* Seção Sobre o GETEC */}
-      <Row className="justify-content-center text-center py-5 mt-5 rounded-4 about-getec-section">
-        <Col md={8}>
-          <h3 className="fw-bold mb-3">Uma Iniciativa GETEC UFBA</h3>
-          <p className="lead mb-4">
-            Desenvolvido pelo Grupo de Pesquisa e Extensão em Gestão e Tecnologia das Construções da Universidade Federal da Bahia.
+        {/* Seção Sobre o GETEC */}
+        <div className="about-getec-section text-center">
+          <span className="getec-badge">INICIATIVA ACADÊMICA</span>
+          <h3 className="fw-bold mb-3">Desenvolvido pelo GETEC UFBA</h3>
+          <p className="text-muted mb-4 mx-auto" style={{ maxWidth: '700px' }}>
+            O <strong>Grupo de Pesquisa e Extensão em Gestão e Tecnologia das Construções</strong> da Universidade Federal da Bahia atua no desenvolvimento de soluções tecnológicas aplicadas à engenharia civil.
           </p>
-          <a href="https://getec.eng.ufba.br/" target="_blank" rel="noopener noreferrer" className="btn btn-success btn-lg px-5 py-3 shadow-sm fw-bold">
-            Conheça o GETEC
-          </a>
-        </Col>
-      </Row>
-    </Container>
+          <Button 
+            variant="outline-success" 
+            href="https://getec.eng.ufba.br/" 
+            target="_blank" 
+            className="rounded-pill px-4 py-2"
+          >
+            <FaExternalLinkAlt className="me-2" /> Visitar Portal GETEC
+          </Button>
+        </div>
+      </Container>
+    </div>
   );
 };
 

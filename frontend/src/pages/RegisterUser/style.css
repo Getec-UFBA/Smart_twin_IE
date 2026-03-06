@@ -2,76 +2,133 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-grow: 1;
+  min-height: calc(100vh - 200px);
+  padding: 20px;
 }
 
 .register-user-box {
-  background: var(--bs-body-bg); /* Cinza escuro, mais claro que o fundo */
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--bs-card-bg);
+  padding: 40px;
+  border-radius: 24px;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   width: 100%;
-  max-width: 400px;
-  color: var(--bs-body-color); /* Texto claro para contraste */
-  border: 1px solid var(--bs-secondary);
+  max-width: 460px;
+  border: 1px solid var(--bs-border-color);
+  transition: transform 0.3s ease;
 }
 
 .register-user-box h2 {
+  font-weight: 800;
   text-align: center;
-  margin-bottom: 1.5rem;
-  color: var(--bs-body-color); /* Título claro */
+  margin-bottom: 8px;
+  color: var(--bs-body-color);
+  letter-spacing: -0.02em;
 }
 
-.input-group {
-  margin-bottom: 1rem;
+.register-user-subtitle {
+  text-align: center;
+  color: var(--bs-secondary-color);
+  font-size: 0.95rem;
+  margin-bottom: 32px;
 }
 
-.input-group label {
+.register-form .input-group-custom {
+  margin-bottom: 20px;
+}
+
+.input-group-custom label {
   display: block;
-  margin-bottom: 0.5rem;
-  color: var(--bs-body-color); /* Labels claros */
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.input-group input,
-.input-group select {
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 16px;
+  color: #10b981;
+  font-size: 1.1rem;
+}
+
+.input-group-custom input,
+.input-group-custom select {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--bs-secondary);
-  border-radius: 4px;
+  padding: 12px 16px 12px 48px;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
   background-color: var(--bs-body-bg);
   color: var(--bs-body-color);
-  border-color: var(--bs-secondary);
+  font-size: 1rem;
+  transition: all 0.2s ease;
 }
 
-.input-group input::placeholder,
-.input-group select::placeholder {
-  color: var(--bs-secondary);
+.input-group-custom input:focus,
+.input-group-custom select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
 }
 
 .register-button {
   width: 100%;
-  padding: 0.75rem;
+  padding: 14px;
   border: none;
-  border-radius: 4px;
-  background-color: var(--bs-primary); /* Verde */
+  border-radius: 12px;
+  background-color: #10b981;
   color: white;
+  font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.2s;
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
 }
 
 .register-button:hover {
-  background-color: #146C43; /* Verde mais escuro */
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
 }
 
-.error-message {
-  color: #dc3545; /* Vermelho padrão para erros */
-  text-align: center;
-  margin-bottom: 1rem;
+.register-button:active {
+  transform: translateY(0);
 }
 
-.success-message {
-  color: #28a745; /* Verde para mensagens de sucesso */
+.status-alert {
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-size: 0.9rem;
+  font-weight: 500;
   text-align: center;
-  margin-bottom: 1rem;
+  animation: slideDown 0.3s ease;
+}
+
+.status-alert.error {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.status-alert.success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

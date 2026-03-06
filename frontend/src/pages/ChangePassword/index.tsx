@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { Container, Row, Col, Form, Button } from 'react-bootstrap';
-import axios from 'axios';
+import api from '../../services/api';
 import PasswordInput from '../../components/PasswordInput';
+import { FaSave, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
 import './style.css';
-
-const API_URL = 'http://localhost:3001';
 
 const ChangePassword: React.FC = () => {
   const [oldPassword, setOldPassword] = useState('');
@@ -12,6 +10,7 @@ const ChangePassword: React.FC = () => {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,68 +22,84 @@ const ChangePassword: React.FC = () => {
       return;
     }
 
+    setLoading(true);
     try {
-      await axios.patch(`${API_URL}/profile/password`, {
+      await api.patch('/profile/password', {
         oldPassword,
         newPassword,
         confirmNewPassword,
       });
-      setSuccess('Senha alterada com sucesso!');
+      setSuccess('Sua senha foi alterada com sucesso!');
       setOldPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
+      if (api.isAxiosError(err) && err.response) {
         setError(err.response.data.error || 'Erro ao alterar a senha.');
       } else {
         setError('Erro desconhecido ao alterar a senha.');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Container className="change-password-container">
-      <Row className="justify-content-md-center">
-        <Col md={6}>
-          <div className="change-password-box">
-            <h2 className="text-center mb-4">Alterar Senha</h2>
-            <Form onSubmit={handleSubmit}>
-              {error && <p className="error-message">{error}</p>}
-              {success && <p className="success-message">{success}</p>}
-
-              <PasswordInput
-                id="oldPassword"
-                name="oldPassword"
-                label="Senha Atual"
-                value={oldPassword}
-                onChange={e => setOldPassword(e.target.value)}
-                required
-              />
-              <PasswordInput
-                id="newPassword"
-                name="newPassword"
-                label="Nova Senha"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                required
-              />
-              <PasswordInput
-                id="confirmNewPassword"
-                name="confirmNewPassword"
-                label="Confirmar Nova Senha"
-                value={confirmNewPassword}
-                onChange={e => setConfirmNewPassword(e.target.value)}
-                required
-              />
-
-              <Button variant="primary" type="submit" className="w-100 mt-3">
-                Salvar Nova Senha
-              </Button>
-            </Form>
+    <div className="change-password-container">
+      <div className="change-password-box animate-fade-in">
+        <h2>Segurança</h2>
+        <p className="change-password-subtitle">Mantenha sua conta protegida atualizando sua senha regularmente.</p>
+        
+        {error && (
+          <div className="status-alert error">
+            <FaExclamationCircle /> {error}
           </div>
-        </Col>
-      </Row>
-    </Container>
+        )}
+        {success && (
+          <div className="status-alert success">
+            <FaCheckCircle /> {success}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="change-password-form">
+          <PasswordInput
+            id="oldPassword"
+            name="oldPassword"
+            label="Senha Atual"
+            value={oldPassword}
+            onChange={e => setOldPassword(e.target.value)}
+            required
+          />
+          
+          <PasswordInput
+            id="newPassword"
+            name="newPassword"
+            label="Nova Senha"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            required
+          />
+          
+          <PasswordInput
+            id="confirmNewPassword"
+            name="confirmNewPassword"
+            label="Confirme a nova senha"
+            value={confirmNewPassword}
+            onChange={e => setConfirmNewPassword(e.target.value)}
+            required
+          />
+
+          <button 
+            type="submit" 
+            className="btn-save-password w-100" 
+            disabled={loading}
+          >
+            {loading ? 'Processando...' : <><FaSave /> Salvar Nova Senha</>}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 };
 

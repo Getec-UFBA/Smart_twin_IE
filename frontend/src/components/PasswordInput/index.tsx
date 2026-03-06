@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaLock } from 'react-icons/fa';
 import './style.css'; 
 
 interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -14,12 +14,15 @@ const PasswordInput: React.FC<PasswordInputProps> = ({ label, id, ...props }) =>
   };
 
   return (
-    <div className="input-group password-input-group">
+    <div className="input-group-custom password-input-group">
       <label htmlFor={id}>{label}</label>
-      <div className="password-input-wrapper">
+      <div className="input-wrapper">
+        <FaLock className="input-icon" />
         <input
           id={id}
+          className="password-field"
           type={showPassword ? 'text' : 'password'}
+          placeholder="••••••••"
           {...props}
         />
         <span className="password-toggle" onClick={togglePasswordVisibility}>

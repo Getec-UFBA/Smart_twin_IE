@@ -3,20 +3,27 @@
   flex-direction: column;
   min-height: 100vh;
   transition: margin-left 0.3s ease-in-out;
-  padding-top: 56px; /* Altura do Navbar */
+  padding-top: 72px; /* Aumentado de 56px para 72px */
   width: 100%;
 }
 
 .main-content.sidebar-closed {
-  margin-left: 70px;
+  margin-left: 0;
 }
 
 .main-content.sidebar-open {
-  margin-left: 250px;
+  margin-left: 260px;
 }
 
 .main-content.no-sidebar {
   margin-left: 0;
+}
+
+/* Navbar mais robusta */
+.navbar {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  min-height: 72px;
 }
 
 .navbar-brand-custom {
@@ -31,15 +38,83 @@ main.flex-grow-1 {
 }
 
 .navbar-avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.2s;
+}
+
+.avatar-dropdown-toggle:hover .navbar-avatar {
+  border-color: #10b981;
 }
 
 .avatar-dropdown-toggle {
-  padding: 0 !important; /* Remove padding para o avatar se ajustar melhor */
+  padding: 0 !important;
   display: flex;
   align-items: center;
+}
+
+/* User Dropdown Menu Premium */
+.user-dropdown-menu {
+  border-radius: 16px !important;
+  border: 1px solid var(--bs-border-color) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  padding: 8px !important;
+  min-width: 220px !important;
+  margin-top: 10px !important;
+}
+
+.dropdown-user-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 8px;
+}
+
+.dropdown-user-email {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-dropdown-item {
+  border-radius: 10px !important;
+  padding: 10px 16px !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  color: var(--bs-body-color) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  transition: all 0.2s !important;
+}
+
+.user-dropdown-item svg {
+  font-size: 1rem;
+  color: var(--bs-secondary-color);
+  transition: color 0.2s;
+}
+
+.user-dropdown-item:hover {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  color: #10b981 !important;
+}
+
+.user-dropdown-item:hover svg {
+  color: #10b981;
+}
+
+.user-dropdown-item.logout-item:hover {
+  background-color: rgba(220, 53, 69, 0.08) !important;
+  color: #dc3545 !important;
+}
+
+.user-dropdown-item.logout-item:hover svg {
+  color: #dc3545;
 }
 
 .navbar-dark .nav-link {
@@ -48,4 +123,53 @@ main.flex-grow-1 {
 
 .navbar-dark .nav-link:hover {
     color: rgba(255, 255, 255, 0.75);
+}
+
+/* Footer Moderno - Sempre Escuro */
+.footer-custom {
+  background-color: #0f111a !important; /* Quase preto */
+  color: #cbd5e1 !important; /* Texto levemente mais claro para melhor leitura */
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 1rem; /* Aumentado de 0.85rem para 1rem */
+  line-height: 1.6;
+}
+
+/* Garante que os textos e títulos sejam visíveis no fundo preto */
+.footer-custom h6, 
+.footer-custom .footer-brand {
+  color: #f1f5f9 !important;
+  font-size: 1.1rem; /* Títulos levemente maiores */
+}
+
+.footer-custom .footer-link {
+  color: #cbd5e1 !important;
+  text-decoration: none;
+  transition: color 0.2s;
+  font-size: 0.95rem;
+}
+
+.footer-custom .footer-link:hover {
+  color: #10b981 !important; /* Verde GETEC no hover */
+}
+
+.footer-custom .footer-version {
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #f1f5f9 !important;
+  font-size: 0.9rem;
+}
+
+.footer-custom hr {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  margin: 2rem 0;
+}
+
+.footer-custom p {
+  font-size: 0.95rem;
+}
+
+.text-getec {
+  color: #10b981 !important;
 }

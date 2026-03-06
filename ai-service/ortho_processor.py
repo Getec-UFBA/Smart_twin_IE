@@ -9,7 +9,7 @@ from shapely.ops import unary_union
 import shutil
 
 class OrthoProcessor:
-    def __init__(self, model_path, tile_size=1024, overlap=300):
+    def __init__(self, model_path, tile_size=2048, overlap=500):
         self.model = YOLO(model_path, task='detect')
         self.tile_size = tile_size
         self.overlap = overlap
@@ -153,13 +153,58 @@ class OrthoProcessor:
             height = src.height
             transform = src.transform
             
+            print(f"[IA] Ortofoto carregada: {width}x{height} pixels ({src.dtypes[0]}).")
+
+            # --- PASSO 1: VARREDURA GLOBAL (PARA DEFEITOS GRANDES) ---
+            print("[IA] Iniciando varredura global (sem fatiamento) para defeitos grandes...")
+            global_imgsz = 3072 # Tamanho razoável para detectar coisas grandes sem estourar memória
+            
+            # Lê e redimensiona a imagem inteira
+            img_data_global = src.read(
+                [1, 2, 3],
+                out_shape=(3, global_imgsz, global_imgsz),
+                resampling=rasterio.enums.Resampling.bilinear
+            )
+            
+            if img_data_global.dtype != np.uint8:
+                img_data_global = ((img_data_global - img_data_global.min()) / (img_data_global.max() - img_data_global.min() + 1e-5) * 255).astype(np.uint8)
+            
+            img_global = np.moveaxis(img_data_global, 0, -1)
+            
+            # Inferência Global
+            results_global = self.model(img_global, imgsz=global_imgsz, conf=0.15, verbose=False)
+            
+            scale_x = width / global_imgsz
+            scale_y = height / global_imgsz
+            
+            if results_global and results_global[0].boxes:
+                for b in results_global[0].boxes:
+                    x1, y1, x2, y2 = map(float, b.xyxy[0])
+                    conf = float(b.conf[0])
+                    cls = int(b.cls[0])
+                    class_name = self.model.names[cls]
+                    
+                    # Mapeia de volta para as coordenadas originais do ortomosaico
+                    raw_detections.append({
+                        "class_name": class_name,
+                        "confidence": conf,
+                        "pixel_box": {
+                            "x1": x1 * scale_x, 
+                            "y1": y1 * scale_y, 
+                            "x2": x2 * scale_x, 
+                            "y2": y2 * scale_y
+                        },
+                        "source": "global"
+                    })
+                print(f"[IA] Varredura global concluída. {len(results_global[0].boxes)} possíveis defeitos grandes encontrados.")
+
+            # --- PASSO 2: VARREDURA POR FATIAS (PARA DEFEITOS MENORES) ---
+            print(f"[IA] Iniciando varredura por fatias ({self.tile_size}px)...")
             x_steps = list(range(0, width, self.tile_size - self.overlap))
             y_steps = list(range(0, height, self.tile_size - self.overlap))
             total_tiles = len(x_steps) * len(y_steps)
             processed_tiles = 0
             
-            print(f"[IA] Ortofoto carregada: {width}x{height} pixels ({src.dtypes[0]}).")
-
             for y in y_steps:
                 for x in x_steps:
                     processed_tiles += 1
@@ -172,20 +217,18 @@ class OrthoProcessor:
                     if np.sum(img_data) < (self.tile_size * self.tile_size * 3 * 0.01):
                         continue
 
-                    # --- NORMALIZAÇÃO PARA 8-BIT (CRÍTICO PARA YOLO EM TIFF) ---
                     if img_data.dtype != np.uint8:
-                        # Normaliza para 0-255 baseado no range dinâmico da fatia ou do global
-                        # Aqui usamos a fatia para ser mais rápido e lidar com áreas de sombra/luz
                         img_data = ((img_data - img_data.min()) / (img_data.max() - img_data.min() + 1e-5) * 255).astype(np.uint8)
 
                     img = np.moveaxis(img_data, 0, -1)
                     
+                    # Padding se a fatia for menor que o tile_size (bordas da imagem)
                     if img.shape[0] != self.tile_size or img.shape[1] != self.tile_size:
                         canvas = np.zeros((self.tile_size, self.tile_size, 3), dtype=np.uint8)
                         canvas[:img.shape[0], :img.shape[1], :] = img
                         img = canvas
                     
-                    # Inferência
+                    # Inferência na Fatia
                     results = self.model(img, imgsz=self.tile_size, conf=0.20, verbose=False)
                     
                     if results and results[0].boxes:
@@ -198,10 +241,12 @@ class OrthoProcessor:
                             raw_detections.append({
                                 "class_name": class_name,
                                 "confidence": conf,
-                                "pixel_box": {"x1": x + x1, "y1": y + y1, "x2": x + x2, "y2": y + y2}
+                                "pixel_box": {"x1": x + x1, "y1": y + y1, "x2": x + x2, "y2": y + y2},
+                                "source": "tile"
                             })
             
-            filtered_detections = self._apply_nms(raw_detections)
+            # --- PASSO 3: NMS (UNIFICAR DETECÇÕES) ---
+            filtered_detections = self._apply_nms(raw_detections, iou_threshold=0.3)
             
             final_detections = []
             for d in filtered_detections:

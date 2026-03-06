@@ -14,13 +14,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, isAdmin }) => 
   const handleNavLinkClick = () => {
     if (isOpen) {
       toggleSidebar();
-      
     }
   };
   
   return (
     <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
       <Nav className="flex-column">
+        <div className="sidebar-section-label">Menu</div>
         <Nav.Link as={NavLink} to="/" end onClick={handleNavLinkClick}>
           <FaHome />
           <span>Home</span>
@@ -29,11 +29,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, isAdmin }) => 
           <FaFolder />
           <span>Projetos</span>
         </Nav.Link>
+
         {isAdmin && (
-          <Nav.Link as={NavLink} to="/register-user" onClick={handleNavLinkClick}>
-            <FaUserPlus />
-            <span>Pré-cadastrar Usuário</span>
-          </Nav.Link>
+          <>
+            <div className="sidebar-section-label">Administração</div>
+            <Nav.Link as={NavLink} to="/register-user" onClick={handleNavLinkClick}>
+              <FaUserPlus />
+              <span>Cadastrar Usuário</span>
+            </Nav.Link>
+          </>
         )}
       </Nav>
     </div>
