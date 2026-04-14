@@ -10,5 +10,5 @@ export interface IUser {
   bio?: string;
   avatarUrl?: string;
   resetPasswordToken?: string;
-  resetPasswordExpires?: number;
+  resetPasswordExpires?: Date | string | number;
 }
