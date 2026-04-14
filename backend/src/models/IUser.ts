@@ -9,4 +9,6 @@ export interface IUser {
   company?: string;
   bio?: string;
   avatarUrl?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: number;
 }

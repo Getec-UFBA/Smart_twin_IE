@@ -56,7 +56,7 @@ class ReportService {
       });
 
       console.log('[ReportService] Gerando buffer do PDF...');
-      const pdfBuffer = await page.pdf({
+      const pdfBufferUint8Array = await page.pdf({
         format: 'A4',
         printBackground: true,
         margin: {
@@ -67,6 +67,8 @@ class ReportService {
         },
         timeout: 120000,
       });
+
+      const pdfBuffer = Buffer.from(pdfBufferUint8Array);
 
       console.log('[ReportService] PDF gerado com sucesso.');
       return pdfBuffer;
