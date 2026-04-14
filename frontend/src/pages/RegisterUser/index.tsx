@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import api from '../../services/api';
+import api, { isAxiosError } from '../../services/api';
 import { FaEnvelope, FaShieldAlt, FaUserPlus, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import './style.css';
 
@@ -21,8 +21,8 @@ const RegisterUser: React.FC = () => {
       setSuccess(`O convite para ${email} foi enviado com sucesso!`);
       setEmail('');
       setRole('user');
-    } catch (err) {
-      if (api.isAxiosError(err) && err.response) {
+    } catch (err: any) {
+      if (isAxiosError(err) && err.response) {
         setError(err.response.data.message || err.response.data.error || 'Erro ao pré-cadastrar usuário.');
       } else {
         setError('Erro desconhecido ao pré-cadastrar usuário.');

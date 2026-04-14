@@ -14,4 +14,5 @@ api.interceptors.request.use(async config => {
   return config;
 });
 
+export const isAxiosError = axios.isAxiosError;
 export default api;

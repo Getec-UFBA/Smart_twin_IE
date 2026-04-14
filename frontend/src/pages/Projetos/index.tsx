@@ -259,10 +259,10 @@ const Projetos: React.FC = () => {
                 <Form.Group className="mb-3"><Form.Label>Endereço</Form.Label><Form.Control value={address} onChange={e => setAddress(e.target.value)} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>Imagem de Capa</Form.Label><Form.Control type="file" required onChange={e => setCoverImage(e.target.files ? e.target.files[0] : null)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>Imagem de Capa</Form.Label><Form.Control type="file" required onChange={e => setCoverImage((e.target as any).files ? (e.target as any).files[0] : null)} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>Modelo BIM</Form.Label><Form.Control type="file" onChange={e => setBimModel(e.target.files ? e.target.files[0] : null)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>Modelo BIM</Form.Label><Form.Control type="file" onChange={e => setBimModel((e.target as any).files ? (e.target as any).files[0] : null)} /></Form.Group>
               </Col>
             </Row>
             <Button variant="primary" type="submit" className="w-100 mt-4">Criar Projeto</Button>

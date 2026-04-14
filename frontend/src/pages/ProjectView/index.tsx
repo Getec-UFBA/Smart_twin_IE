@@ -25,7 +25,7 @@ const ProjectView: React.FC = () => {
   // Controle de Progresso
   const [progress, setProgress] = useState(0);
   const [progressStatus, setProgressStatus] = useState('');
-  const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Controle de Visualização
   const [activeInspection, setActiveInspection] = useState<IInspection | null>(null);

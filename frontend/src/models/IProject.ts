@@ -25,6 +25,7 @@ export interface IImage {
 
 export interface IOrthoResult {
   url: string;
+  previewUrl?: string;
   detections: IGeoDetection[];
 }
 

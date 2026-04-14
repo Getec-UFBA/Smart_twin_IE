@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import api from '../../services/api';
+import api, { isAxiosError } from '../../services/api';
 import PasswordInput from '../../components/PasswordInput';
 import { FaSave, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
 import './style.css';
@@ -34,8 +34,8 @@ const ChangePassword: React.FC = () => {
       setNewPassword('');
       setConfirmNewPassword('');
       setTimeout(() => setSuccess(null), 5000);
-    } catch (err) {
-      if (api.isAxiosError(err) && err.response) {
+    } catch (err: any) {
+      if (isAxiosError(err) && err.response) {
         setError(err.response.data.error || 'Erro ao alterar a senha.');
       } else {
         setError('Erro desconhecido ao alterar a senha.');

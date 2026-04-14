@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Image } from 'react-bootstrap';
+import { Form, Button, Image } from 'react-bootstrap';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { FaUser, FaBuilding, FaInfoCircle, FaCamera, FaSave, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
