@@ -12,15 +12,17 @@ class UserRepository {
   private async readDB(): Promise<IDB> {
     try {
       const data = await fs.readFile(DB_PATH, 'utf-8');
-      const db = JSON.parse(data);
+      const db = JSON.parse(data) as any;
       // Converte resetPasswordExpires de string/number para Date, se existir e não for Date
-      db.users = db.users.map((user: any) => {
-        if (user.resetPasswordExpires && !(user.resetPasswordExpires instanceof Date)) {
-          user.resetPasswordExpires = new Date(user.resetPasswordExpires);
-        }
-        return user as IUser;
-      });
-      return db;
+      if (db.users && Array.isArray(db.users)) {
+        db.users = db.users.map((user: any) => {
+          if (user.resetPasswordExpires && !(user.resetPasswordExpires instanceof Date)) {
+            user.resetPasswordExpires = new Date(user.resetPasswordExpires);
+          }
+          return user;
+        });
+      }
+      return db as IDB;
     } catch (error) {
       if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
         return { users: [] };
