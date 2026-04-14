@@ -14,11 +14,11 @@ class UserRepository {
       const data = await fs.readFile(DB_PATH, 'utf-8');
       const db = JSON.parse(data);
       // Converte resetPasswordExpires de string/number para Date, se existir e não for Date
-      db.users = db.users.map((user: IUser) => {
+      db.users = db.users.map((user: any) => {
         if (user.resetPasswordExpires && !(user.resetPasswordExpires instanceof Date)) {
           user.resetPasswordExpires = new Date(user.resetPasswordExpires);
         }
-        return user;
+        return user as IUser;
       });
       return db;
     } catch (error) {
