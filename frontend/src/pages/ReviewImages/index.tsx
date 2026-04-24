@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import './style.css';
 
 // --- New Authenticated Image Component ---
 const AuthenticatedImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const { t } = useTranslation();
   const [imageUrl, setImageUrl] = useState<string>('');
 
   useEffect(() => {
@@ -15,7 +17,6 @@ const AuthenticatedImage: React.FC<{ src: string; alt: string }> = ({ src, alt }
         setImageUrl(objectUrl);
       } catch (error) {
         console.error('Failed to fetch image:', error);
-        // You could set a placeholder error image URL here
       }
     };
 
@@ -23,15 +24,14 @@ const AuthenticatedImage: React.FC<{ src: string; alt: string }> = ({ src, alt }
       fetchImage();
     }
 
-    // Cleanup function to revoke the object URL
     return () => {
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
       }
     };
-  }, [src]);
+  }, [src, imageUrl]);
 
-  return imageUrl ? <img src={imageUrl} alt={alt} /> : <p>Carregando imagem...</p>;
+  return imageUrl ? <img src={imageUrl} alt={alt} /> : <p>{t('review_images.loading')}</p>;
 };
 
 // --- Updated Interfaces ---
@@ -64,6 +64,7 @@ interface IInspection {
 }
 
 const ReviewImages: React.FC = () => {
+  const { t } = useTranslation();
   const { reviewId } = useParams<{ reviewId: string }>();
   const navigate = useNavigate();
 
@@ -85,7 +86,7 @@ const ReviewImages: React.FC = () => {
         const response = await api.get(`/projects/review/${reviewId}`);
         setReviewData(response.data);
       } catch (err) {
-        setError('Falha ao carregar a revisão. Ela pode ter expirado ou não existir.');
+        setError(t('project_results.error_no_images'));
         setTimeout(() => navigate('/projetos'), 3000);
       }
     };
@@ -96,7 +97,7 @@ const ReviewImages: React.FC = () => {
         setProjects(response.data);
       } catch (err) {
         console.error('Failed to fetch projects', err);
-        setError('Falha ao carregar projetos.');
+        setError(t('dashboard.error_loading'));
       }
     };
 
@@ -107,11 +108,11 @@ const ReviewImages: React.FC = () => {
     };
 
     loadAllData();
-  }, [reviewId, navigate]);
+  }, [reviewId, navigate, t]);
 
   const handleSave = async () => {
     if (!selectedProject || !selectedInspection || !reviewId) {
-      alert('Por favor, selecione um projeto e uma inspeção.');
+      alert(t('project_results.select_insp_first'));
       return;
     }
     setSaving(true);
@@ -121,10 +122,10 @@ const ReviewImages: React.FC = () => {
         projectId: selectedProject,
         inspectionId: selectedInspection,
       });
-      alert('Imagens salvas com sucesso!');
+      alert(t('project_results.saved'));
       navigate(`/projetos/${selectedProject}`);
     } catch (err) {
-      setError('Falha ao salvar as imagens. Tente novamente.');
+      setError(t('project_results.error_save_image'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -133,7 +134,7 @@ const ReviewImages: React.FC = () => {
   
   const inspectionsForSelectedProject = projects.find(p => p.id === selectedProject)?.inspections || [];
 
-  if (loading) return <div className="review-container"><p>Carregando dados da revisão...</p></div>;
+  if (loading) return <div className="review-container"><p>{t('review_images.loading')}</p></div>;
   if (error) return <div className="review-container error-message"><p>{error}</p></div>;
   if (!reviewData) return null;
 
@@ -141,21 +142,21 @@ const ReviewImages: React.FC = () => {
 
   return (
     <div className="review-container">
-      <h1>Revisão de Imagens Processadas</h1>
+      <h1>{t('review_images.title')}</h1>
       <div className="save-section">
-        <h2>Salvar em Inspeção</h2>
+        <h2>{t('project_results.save_in')}</h2>
         <div className="selectors">
           <select value={selectedProject} onChange={e => { setSelectedProject(e.target.value); setSelectedInspection(''); }}>
-            <option value="">Selecione um Projeto</option>
+            <option value="">{t('projects.modal_bim_model')}</option>
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <select value={selectedInspection} onChange={e => setSelectedInspection(e.target.value)} disabled={!selectedProject}>
-            <option value="">Selecione uma Inspeção</option>
+            <option value="">{t('project_results.select_inspection')}</option>
             {inspectionsForSelectedProject.map(i => <option key={i.id} value={i.id}>{i.inspectionObjective}</option>)}
           </select>
         </div>
         <button onClick={handleSave} disabled={!selectedInspection || saving}>
-          {saving ? 'Salvando...' : 'Salvar na Inspeção'}
+          {saving ? t('project_results.saving') : t('project_results.save_button')}
         </button>
       </div>
 
@@ -173,11 +174,11 @@ const ReviewImages: React.FC = () => {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <span className="modal-close" onClick={() => setModalImage(null)}>&times;</span>
             <AuthenticatedImage src={getImageUrl(modalImage.imageId)} alt={modalImage.originalFileName} />
-            <h3>Deteções:</h3>
+            <h3>{t('project_view.ortho_section_title')}:</h3>
             <ul>
               {modalImage.detections.length > 0 ? modalImage.detections.map((det, i) => (
-                <li key={i}>{det.class_name} (Confiança: {(det.confidence * 100).toFixed(2)}%)</li>
-              )) : <li>Nenhuma detecção.</li>}
+                <li key={i}>{det.class_name} ({t('project_view.anomalies_detected', { count: (det.confidence * 100).toFixed(2) })}%)</li>
+              )) : <li>{t('project_view.no_images')}</li>}
             </ul>
           </div>
         </div>

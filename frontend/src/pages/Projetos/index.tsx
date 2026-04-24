@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Row, Col, Button, Modal, Form, Card, Stack } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +32,7 @@ interface IProject {
 }
 
 const Projetos: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [allProjects, setAllProjects] = useState<IProject[]>([]);
@@ -105,7 +107,7 @@ const Projetos: React.FC = () => {
       setAllProjects([...allProjects, response.data]);
       setShowCreateModal(false);
     } catch (err) {
-      setError('Erro ao criar o projeto.');
+      setError(t('projects.error_create'));
     }
   };
 
@@ -115,7 +117,7 @@ const Projetos: React.FC = () => {
       await api.delete(`/projects/${projectToDelete.id}`);
       setAllProjects(allProjects.filter(p => p.id !== projectToDelete.id));
     } catch (err) {
-      setError('Erro ao excluir o projeto.');
+      setError(t('projects.error_delete'));
     } finally {
       setShowDeleteModal(false);
       setProjectToDelete(null);
@@ -127,12 +129,12 @@ const Projetos: React.FC = () => {
       <Container>
         <div className="d-flex justify-content-between align-items-end mb-5">
           <div>
-            <h1 className="page-header-title mb-0">Meus Projetos</h1>
-            <p className="text-muted mt-2 mb-0">Gerencie e acompanhe o progresso de suas obras e manutenções.</p>
+            <h1 className="page-header-title mb-0">{t('projects.title')}</h1>
+            <p className="text-muted mt-2 mb-0">{t('projects.subtitle')}</p>
           </div>
           {user?.role === 'admin' && (
             <Button className="btn-primary d-flex align-items-center gap-2" onClick={() => setShowCreateModal(true)}>
-              <FaPlus /> Novo Projeto
+              <FaPlus /> {t('projects.new_project')}
             </Button>
           )}
         </div>
@@ -147,7 +149,7 @@ const Projetos: React.FC = () => {
                 </div>
                 <Form.Control
                   className="modern-search-input"
-                  placeholder="Buscar projeto ou responsável..."
+                  placeholder={t('projects.search_placeholder')}
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                 />
@@ -155,24 +157,24 @@ const Projetos: React.FC = () => {
             </Col>
             <Col lg={7}>
               <div className="filter-pills justify-content-lg-end">
-                <span className="small fw-bold text-muted me-2 align-self-center">FILTRAR POR:</span>
+                <span className="small fw-bold text-muted me-2 align-self-center">{t('projects.filter_by')}</span>
                 <div 
                   className={`filter-pill ${selectedModules.maintenance ? 'active' : ''}`}
                   onClick={() => toggleModuleFilter('maintenance')}
                 >
-                  <FaTools className="me-2" /> Manutenção
+                  <FaTools className="me-2" /> {t('projects.maintenance')}
                 </div>
                 <div 
                   className={`filter-pill ${selectedModules.progress ? 'active' : ''}`}
                   onClick={() => toggleModuleFilter('progress')}
                 >
-                  <FaChartLine className="me-2" /> Progresso
+                  <FaChartLine className="me-2" /> {t('projects.progress')}
                 </div>
                 <div 
                   className={`filter-pill ${selectedModules.security ? 'active' : ''}`}
                   onClick={() => toggleModuleFilter('security')}
                 >
-                  <FaShieldAlt className="me-2" /> Segurança
+                  <FaShieldAlt className="me-2" /> {t('projects.security')}
                 </div>
               </div>
             </Col>
@@ -187,9 +189,9 @@ const Projetos: React.FC = () => {
                 <div className="project-card-img-wrapper">
                   <Card.Img variant="top" src={`${API_URL}/files/projects/${project.coverImageUrl}`} />
                   <div className="project-card-overlay">
-                    {project.modules.maintenance && <div className="module-badge" title="Manutenção"><FaTools /></div>}
-                    {project.modules.progress && <div className="module-badge" title="Progresso"><FaChartLine /></div>}
-                    {project.modules.security && <div className="module-badge" title="Segurança"><FaShieldAlt /></div>}
+                    {project.modules.maintenance && <div className="module-badge" title={t('projects.maintenance')}><FaTools /></div>}
+                    {project.modules.progress && <div className="module-badge" title={t('projects.progress')}><FaChartLine /></div>}
+                    {project.modules.security && <div className="module-badge" title={t('projects.security')}><FaShieldAlt /></div>}
                   </div>
                 </div>
                 <Card.Body>
@@ -201,7 +203,7 @@ const Projetos: React.FC = () => {
                       className="flex-grow-1"
                       onClick={() => navigate(`/projetos/${project.id}`)}
                     >
-                      Abrir Projeto
+                      {t('projects.open_project')}
                     </Button>
                     {user?.role === 'admin' && (
                       <Button 
@@ -222,11 +224,11 @@ const Projetos: React.FC = () => {
             <Col xs={12}>
               <div className="empty-state-card">
                 <FaFolderOpen className="empty-state-icon" />
-                <h4 className="fw-bold">Nenhum projeto encontrado</h4>
-                <p>Tente ajustar seus filtros ou buscar por outro termo.</p>
+                <h4 className="fw-bold">{t('projects.empty_state_title')}</h4>
+                <p>{t('projects.empty_state_subtitle')}</p>
                 {searchTerm && (
                   <Button variant="link" className="text-success p-0" onClick={() => setSearchTerm('')}>
-                    Limpar busca
+                    {t('projects.clear_search')}
                   </Button>
                 )}
               </div>
@@ -237,48 +239,48 @@ const Projetos: React.FC = () => {
 
       {/* MODAL CRIAR PROJETO (Estrutura mantida, apenas polimento visual) */}
       <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg" centered>
-        <Modal.Header closeButton><Modal.Title>Novo Projeto</Modal.Title></Modal.Header>
+        <Modal.Header closeButton><Modal.Title>{t('projects.modal_create_title')}</Modal.Title></Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleSubmit}>
             <Row>
               <Col md={12} className="mb-4">
-                <Form.Label className="fw-bold">Módulos Ativos</Form.Label>
+                <Form.Label className="fw-bold">{t('projects.modal_active_modules')}</Form.Label>
                 <div className="d-flex gap-3">
-                  <Form.Check type="switch" label="Progresso" checked={modules.progress} onChange={e => setModules({...modules, progress: e.target.checked})} />
-                  <Form.Check type="switch" label="Segurança" checked={modules.security} onChange={e => setModules({...modules, security: e.target.checked})} />
-                  <Form.Check type="switch" label="Manutenção" checked={modules.maintenance} onChange={e => setModules({...modules, maintenance: e.target.checked})} />
+                  <Form.Check type="switch" label={t('projects.progress')} checked={modules.progress} onChange={e => setModules({...modules, progress: e.target.checked})} />
+                  <Form.Check type="switch" label={t('projects.security')} checked={modules.security} onChange={e => setModules({...modules, security: e.target.checked})} />
+                  <Form.Check type="switch" label={t('projects.maintenance')} checked={modules.maintenance} onChange={e => setModules({...modules, maintenance: e.target.checked})} />
                 </div>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>Nome do Projeto</Form.Label><Form.Control required value={projectName} onChange={e => setProjectName(e.target.value)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_project_name')}</Form.Label><Form.Control required value={projectName} onChange={e => setProjectName(e.target.value)} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>Responsável</Form.Label><Form.Control required value={responsible} onChange={e => setResponsible(e.target.value)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_responsible')}</Form.Label><Form.Control required value={responsible} onChange={e => setResponsible(e.target.value)} /></Form.Group>
               </Col>
               <Col md={12}>
-                <Form.Group className="mb-3"><Form.Label>Endereço</Form.Label><Form.Control value={address} onChange={e => setAddress(e.target.value)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_address')}</Form.Label><Form.Control value={address} onChange={e => setAddress(e.target.value)} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>Imagem de Capa</Form.Label><Form.Control type="file" required onChange={e => setCoverImage((e.target as any).files ? (e.target as any).files[0] : null)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_cover_image')}</Form.Label><Form.Control type="file" required onChange={e => setCoverImage((e.target as any).files ? (e.target as any).files[0] : null)} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>Modelo BIM</Form.Label><Form.Control type="file" onChange={e => setBimModel((e.target as any).files ? (e.target as any).files[0] : null)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_bim_model')}</Form.Label><Form.Control type="file" onChange={e => setBimModel((e.target as any).files ? (e.target as any).files[0] : null)} /></Form.Group>
               </Col>
             </Row>
-            <Button variant="primary" type="submit" className="w-100 mt-4">Criar Projeto</Button>
+            <Button variant="primary" type="submit" className="w-100 mt-4">{t('projects.modal_create_button')}</Button>
           </Form>
         </Modal.Body>
       </Modal>
 
       {/* MODAL EXCLUIR */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-        <Modal.Header closeButton><Modal.Title>Confirmar Exclusão</Modal.Title></Modal.Header>
+        <Modal.Header closeButton><Modal.Title>{t('projects.modal_delete_title')}</Modal.Title></Modal.Header>
         <Modal.Body>
-          Deseja excluir permanentemente o projeto <strong>{projectToDelete?.name}</strong>?
+          {t('projects.modal_delete_message', { name: projectToDelete?.name })}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="light" onClick={() => setShowDeleteModal(false)}>Cancelar</Button>
-          <Button variant="danger" onClick={confirmDelete}>Excluir Agora</Button>
+          <Button variant="light" onClick={() => setShowDeleteModal(false)}>{t('projects.modal_delete_cancel')}</Button>
+          <Button variant="danger" onClick={confirmDelete}>{t('projects.modal_delete_confirm')}</Button>
         </Modal.Footer>
       </Modal>
     </div>

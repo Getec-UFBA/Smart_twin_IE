@@ -1,15 +1,17 @@
 import React from 'react';
-import { Container, Row, Col, Image, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Image, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import './style.css';
 import logoSite from '../../assets/images/logo_site (1).png';
 import { 
   FaRobot, FaMapMarkedAlt, FaCube, FaChartLine, 
-  FaArrowRight, FaLock, FaExternalLinkAlt 
+  FaArrowRight, FaLock 
 } from 'react-icons/fa';
 
 const Home: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -26,7 +28,7 @@ const Home: React.FC = () => {
               <h1 className="platform-title">
                 SMART <span className="text-green">TWIN</span>-I<span className="text-green">E</span>
               </h1>
-              <h2 className="subtitle-home">Gêmeos Digitais e Inspeção Estrutural Inteligente</h2>
+              <h2 className="subtitle-home">{t('home.platform_subtitle')}</h2>
             </Col>
           </Row>
         </Container>
@@ -34,14 +36,14 @@ const Home: React.FC = () => {
 
       <Container>
         {/* Funcionalidades */}
-        <h2 className="section-title text-center">Tecnologia de Ponta</h2>
+        <h2 className="section-title text-center">{t('home.tech_section_title')}</h2>
         <Row className="g-4 mb-5">
           <Col lg={3} md={6}>
             <Card className="functionality-card border-0">
               <Card.Body>
                 <div className="icon-box-premium"><FaRobot /></div>
-                <h4 className="fw-bold mb-3">Inspeção por IA</h4>
-                <p className="text-muted mb-0">Detecção automatizada de patologias com modelos YOLOv8 otimizados para engenharia.</p>
+                <h4 className="fw-bold mb-3">{t('home.feature_ia_title')}</h4>
+                <p className="text-muted mb-0">{t('home.feature_ia_desc')}</p>
               </Card.Body>
             </Card>
           </Col>
@@ -50,8 +52,8 @@ const Home: React.FC = () => {
             <Card className="functionality-card border-0">
               <Card.Body>
                 <div className="icon-box-premium"><FaMapMarkedAlt /></div>
-                <h4 className="fw-bold mb-3">Ortomosaicos</h4>
-                <p className="text-muted mb-0">Mapeamento georreferenciado de danos em ortofotos de alta resolução.</p>
+                <h4 className="fw-bold mb-3">{t('home.feature_ortho_title')}</h4>
+                <p className="text-muted mb-0">{t('home.feature_ortho_desc')}</p>
               </Card.Body>
             </Card>
           </Col>
@@ -60,8 +62,8 @@ const Home: React.FC = () => {
             <Card className="functionality-card border-0">
               <Card.Body>
                 <div className="icon-box-premium"><FaCube /></div>
-                <h4 className="fw-bold mb-3">Gêmeos Digitais</h4>
-                <p className="text-muted mb-0">Integração completa com modelos BIM para gestão do ciclo de vida da estrutura.</p>
+                <h4 className="fw-bold mb-3">{t('home.feature_twins_title')}</h4>
+                <p className="text-muted mb-0">{t('home.feature_twins_desc')}</p>
               </Card.Body>
             </Card>
           </Col>
@@ -70,8 +72,8 @@ const Home: React.FC = () => {
             <Card className="functionality-card border-0">
               <Card.Body>
                 <div className="icon-box-premium"><FaChartLine /></div>
-                <h4 className="fw-bold mb-3">Analytics</h4>
-                <p className="text-muted mb-0">Dashboards analíticos com indicadores de severidade e evolução temporal.</p>
+                <h4 className="fw-bold mb-3">{t('home.feature_analytics_title')}</h4>
+                <p className="text-muted mb-0">{t('home.feature_analytics_desc')}</p>
               </Card.Body>
             </Card>
           </Col>
@@ -81,33 +83,16 @@ const Home: React.FC = () => {
         <div className="access-section">
           <div className="access-banner">
             <div className="access-content">
-              <h3>{user ? `Bem-vindo, ${user.name || 'Usuário'}!` : 'Pronto para começar?'}</h3>
-              <p>{user ? 'Acesse seu painel administrativo para gerenciar seus projetos.' : 'Entre na plataforma para utilizar nossas ferramentas de IA e Gêmeos Digitais.'}</p>
+              <h3>{user ? t('home.cta_welcome_user', { name: user.name || 'Usuário' }) : t('home.cta_welcome_guest')}</h3>
+              <p>{user ? t('home.cta_desc_user') : t('home.cta_desc_guest')}</p>
             </div>
             <button 
               className="btn-cta"
               onClick={() => navigate(user ? '/projetos' : '/login')}
             >
-              {user ? <><FaArrowRight className="me-2" /> Ir para Projetos</> : <><FaLock className="me-2" /> Acessar Plataforma</>}
+              {user ? <><FaArrowRight className="me-2" /> {t('home.cta_button_user')}</> : <><FaLock className="me-2" /> {t('home.cta_button_guest')}</>}
             </button>
           </div>
-        </div>
-
-        {/* Seção Sobre o GETEC */}
-        <div className="about-getec-section text-center">
-          <span className="getec-badge">INICIATIVA ACADÊMICA</span>
-          <h3 className="fw-bold mb-3">Desenvolvido pelo GETEC UFBA</h3>
-          <p className="text-muted mb-4 mx-auto" style={{ maxWidth: '700px' }}>
-            O <strong>Grupo de Pesquisa e Extensão em Gestão e Tecnologia das Construções</strong> da Universidade Federal da Bahia atua no desenvolvimento de soluções tecnológicas aplicadas à engenharia civil.
-          </p>
-          <Button 
-            variant="outline-success" 
-            href="https://getec.eng.ufba.br/" 
-            target="_blank" 
-            className="rounded-pill px-4 py-2"
-          >
-            <FaExternalLinkAlt className="me-2" /> Visitar Portal GETEC
-          </Button>
         </div>
       </Container>
     </div>
@@ -115,4 +100,3 @@ const Home: React.FC = () => {
 };
 
 export default Home;
-

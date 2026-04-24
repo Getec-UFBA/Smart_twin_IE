@@ -51,6 +51,7 @@ body.dark {
   flex: 1;
   overflow-y: auto;
   padding: 12px 20px;
+  scroll-behavior: smooth;
 }
 
 /* Itens de Inspeção com Verde */
@@ -112,6 +113,43 @@ body.dark {
   overflow-y: auto;
   padding: 40px;
   position: relative;
+  scroll-behavior: smooth;
+}
+
+/* Painel de Cabeçalho do Projeto */
+.project-header-panel {
+  background-color: var(--sidebar-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+  transition: background-color 0.3s ease;
+}
+
+/* Ajustes para fundos claros que devem escurecer */
+.bg-custom-light {
+  background-color: var(--bg-main);
+  border: 1px solid var(--border-color);
+}
+
+/* Estilização para Modais no Modo Escuro */
+body.dark .modal-content {
+  background-color: var(--sidebar-bg);
+  color: var(--text-main);
+  border-color: var(--border-color);
+}
+
+body.dark .modal-header {
+  border-bottom-color: var(--border-color);
+}
+
+body.dark .modal-footer {
+  border-top-color: var(--border-color);
+}
+
+body.dark .modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
 }
 
 /* Cards */
@@ -121,6 +159,7 @@ body.dark {
   border: 1px solid var(--border-color);
   box-shadow: var(--card-shadow);
   margin-bottom: 28px;
+  transition: background-color 0.3s ease;
 }
 
 /* Grid de Resultados */

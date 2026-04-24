@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordInput from '../../components/PasswordInput';
 import { FaEnvelope, FaSignInAlt } from 'react-icons/fa';
@@ -7,6 +8,7 @@ import logoSite from '../../assets/images/logo_site (1).png';
 import './style.css';
 
 const Login: React.FC = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +24,7 @@ const Login: React.FC = () => {
       await login({ email, password });
       navigate('/projetos');
     } catch (err) {
-      setError('Credenciais inválidas ou cadastro não finalizado.');
+      setError(t('login.error_invalid_credentials'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -34,15 +36,15 @@ const Login: React.FC = () => {
       <div className="login-box">
         <header className="login-logo-header">
           <img src={logoSite} alt="SMART TWIN-IE Logo" />
-          <h2>Bem-vindo</h2>
-          <p className="login-subtitle">Acesse sua conta para gerenciar seus projetos</p>
+          <h2>{t('login.welcome')}</h2>
+          <p className="login-subtitle">{t('login.subtitle')}</p>
         </header>
 
         <form onSubmit={handleSubmit} className="login-form">
           {error && <div className="error-message">{error}</div>}
           
           <div className="input-group-custom">
-            <label htmlFor="email">E-mail</label>
+            <label htmlFor="email">{t('login.email')}</label>
             <div className="input-wrapper">
               <FaEnvelope className="input-icon" />
               <input
@@ -59,23 +61,23 @@ const Login: React.FC = () => {
           <PasswordInput
             id="password"
             name="password"
-            label="Senha"
+            label={t('login.password')}
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
           />
 
           <button type="submit" className="login-button" disabled={loading}>
-            {loading ? 'Entrando...' : <><FaSignInAlt /> Entrar</>}
+            {loading ? t('login.entering') : <><FaSignInAlt /> {t('login.enter')}</>}
           </button>
         </form>
 
         <footer className="login-footer-links">
           <p>
-            Não tem uma senha? <Link to="/complete-registration">Finalize seu cadastro</Link>
+            {t('login.no_password')} <Link to="/complete-registration">{t('login.finish_registration')}</Link>
           </p>
           <p>
-            <Link to="/forgot-password">Esqueci minha senha</Link>
+            <Link to="/forgot-password">{t('login.forgot_password')}</Link>
           </p>
         </footer>
       </div>

@@ -190,11 +190,21 @@ class ProjectService {
       throw new Error('Projeto não encontrado.');
     }
 
+    // Garante que todas as detecções tenham ID e status inicial
+    const imagesWithIds = images.map(img => ({
+      ...img,
+      detections: img.detections?.map(det => ({
+        ...det,
+        id: det.id || uuidv4(),
+        status: det.status || 'pending'
+      }))
+    }));
+
     const updatedInspections = project.inspections?.map(inspection => {
       if (inspection.id === inspectionId) {
         return {
           ...inspection,
-          images: [...inspection.images, ...images],
+          images: [...inspection.images, ...imagesWithIds],
         };
       }
       return inspection;
@@ -216,11 +226,21 @@ class ProjectService {
       throw new Error('Projeto não encontrado.');
     }
 
+    // Garante que todas as detecções tenham ID e status inicial
+    const orthoWithIds = orthoResults.map(ortho => ({
+      ...ortho,
+      detections: ortho.detections.map(det => ({
+        ...det,
+        id: det.id || uuidv4(),
+        status: det.status || 'pending'
+      }))
+    }));
+
     const updatedInspections = project.inspections?.map(inspection => {
       if (inspection.id === inspectionId) {
         return {
           ...inspection,
-          orthoResults: [...(inspection.orthoResults || []), ...orthoResults],
+          orthoResults: [...(inspection.orthoResults || []), ...orthoWithIds],
         };
       }
       return inspection;
@@ -231,6 +251,81 @@ class ProjectService {
     if (!updatedProject) {
       throw new Error('Falha ao adicionar resultados de ortomosaico à inspeção.');
     }
+
+    return updatedProject;
+  }
+
+  public async updateDetectionMaintenance({
+    projectId,
+    inspectionId,
+    detectionIds,
+    maintenanceAt,
+    maintenanceResponsible,
+    maintenanceNotes,
+    maintenanceCost,
+    status
+  }: {
+    projectId: string;
+    inspectionId: string;
+    detectionIds: string[];
+    maintenanceAt?: string;
+    maintenanceResponsible?: string;
+    maintenanceNotes?: string;
+    maintenanceCost?: number;
+    status: 'pending' | 'resolved';
+  }): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const updatedInspections = project.inspections?.map(inspection => {
+      if (inspection.id === inspectionId) {
+        // Atualiza em imagens
+        const updatedImages = inspection.images.map(img => ({
+          ...img,
+          detections: img.detections?.map(det => {
+            if (detectionIds.includes(det.id)) {
+              return { 
+                ...det, 
+                maintenanceAt, 
+                maintenanceResponsible, 
+                maintenanceNotes,
+                maintenanceCost,
+                status 
+              };
+            }
+            return det;
+          })
+        }));
+
+        // Atualiza em OrtoResults
+        const updatedOrthoResults = inspection.orthoResults?.map(ortho => ({
+          ...ortho,
+          detections: ortho.detections.map(det => {
+            if (detectionIds.includes(det.id)) {
+              return { 
+                ...det, 
+                maintenanceAt, 
+                maintenanceResponsible, 
+                maintenanceNotes,
+                maintenanceCost,
+                status 
+              };
+            }
+            return det;
+          })
+        }));
+
+        return {
+          ...inspection,
+          images: updatedImages,
+          orthoResults: updatedOrthoResults
+        };
+      }
+      return inspection;
+    });
+
+    const updatedProject = await this.projectRepository.update(projectId, { inspections: updatedInspections });
+    if (!updatedProject) throw new Error('Falha ao atualizar manutenção das detecções.');
 
     return updatedProject;
   }

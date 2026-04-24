@@ -1,0 +1,176 @@
+/* Estilos baseados em variáveis de tema para suporte a Dark Mode */
+
+.maintenance-modal-v2 .modal-content {
+  border-radius: 28px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  box-shadow: 0 25px 80px rgba(0,0,0,0.15);
+  background-color: var(--bg-card, #ffffff);
+  color: var(--text-main, #1e293b);
+}
+
+.maintenance-modal-v2 .modal-header .btn-close {
+  filter: var(--filter-invert, none);
+}
+
+/* Backgrounds suaves que respeitam o tema */
+.bg-success-soft {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  color: #10b981 !important;
+}
+
+.bg-warning-soft {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  color: #f59e0b !important;
+}
+
+.bg-secondary-soft {
+  background-color: rgba(148, 163, 184, 0.1) !important;
+  color: var(--text-muted, #64748b) !important;
+}
+
+.bg-faint {
+  background-color: var(--bg-main, #fafbfc);
+}
+
+.label-tiny {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+.label-tiny-dark {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-main, #475569);
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.item-row {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+  background-color: transparent !important;
+}
+
+.item-row:hover {
+  background-color: var(--bg-faint, #f8fafc) !important;
+  transform: translateX(4px);
+}
+
+.item-row.resolved {
+  opacity: 0.6;
+}
+
+.item-row.resolved td {
+  color: var(--text-muted, #94a3b8);
+}
+
+.modern-input {
+  border: 1px solid var(--border-color, #e2e8f0) !important;
+  background-color: var(--bg-main, #ffffff) !important;
+  color: var(--text-main, #1e293b) !important;
+  font-size: 0.9rem !important;
+  padding: 0.6rem 0.85rem !important;
+  border-radius: 12px !important;
+}
+
+.modern-input:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1) !important;
+}
+
+.action-btn-v2 {
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  padding: 8px 20px !important;
+  border-radius: 10px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Modal de Detalhes da Correção */
+.resolve-details-modal .modal-content {
+  border-radius: 24px;
+  background-color: var(--bg-card, #ffffff);
+  color: var(--text-main, #1e293b);
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+/* Box de Patologia Selecionada no Modal - ESTILO PREMIUM DARK */
+.selected-pathology-box {
+  background-color: #f1f5f9; /* Light mode */
+  border-radius: 20px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.selected-pathology-box .pathology-label {
+  color: #10b981;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.selected-pathology-box .pathology-name {
+  color: #1e293b;
+  font-weight: 800;
+  font-size: 1.5rem;
+  display: block;
+}
+
+.selected-pathology-box .pathology-desc {
+  color: #64748b;
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.x-small {
+  font-size: 0.7rem;
+}
+
+.font-monospace {
+  font-family: 'SFMono-Regular', Consolas, monospace !important;
+}
+
+.custom-table-wrapper {
+  background: var(--bg-card, white);
+}
+
+.vr {
+  background-color: var(--border-color, #e2e8f0);
+  opacity: 0.5;
+}
+
+/* FORÇAR DARK MODE PROFUNDO */
+[data-theme='dark'] .selected-pathology-box {
+  background-color: #0f172a !important; /* Deep Dark Blue/Black */
+  border-color: #1e293b !important;
+}
+
+[data-theme='dark'] .selected-pathology-box .pathology-name {
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .selected-pathology-box .pathology-desc {
+  color: #94a3b8 !important;
+}
+
+[data-theme='dark'] .modern-input:disabled {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  opacity: 0.5;
+}

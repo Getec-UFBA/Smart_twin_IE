@@ -76,6 +76,20 @@ projectRouter.delete(
   projectController.deleteOrthoFromInspection
 );
 
+// New route for saving image directly to inspection
+projectRouter.post(
+  '/:projectId/inspections/:inspectionId/save-image',
+  authorizeRole(['admin', 'user']),
+  projectController.saveImageToInspection
+);
+
+// New route for updating detection maintenance status
+projectRouter.patch(
+  '/:projectId/inspections/:inspectionId/detections',
+  authorizeRole(['admin', 'user']),
+  projectController.updateDetectionMaintenance
+);
+
 // New route for generating PDF inspection report
 projectRouter.get(
   '/:projectId/report/pdf/inspections/:inspectionId',

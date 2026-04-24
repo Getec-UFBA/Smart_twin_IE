@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Image } from 'react-bootstrap';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { FaUser, FaBuilding, FaInfoCircle, FaCamera, FaSave, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import './style.css';
 
 const Profile: React.FC = () => {
+  const { t } = useTranslation();
   const { user, updateUser } = useAuth();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
@@ -39,10 +41,10 @@ const Profile: React.FC = () => {
           setAvatarUrl(`http://localhost:3001/files/${updatedUser.avatarUrl}`);
         }
         updateUser(updatedUser);
-        setSuccess('Foto de perfil atualizada!');
+        setSuccess(t('profile.success_avatar'));
         setTimeout(() => setSuccess(null), 3000);
       } catch (err) {
-        setError('Erro ao atualizar o avatar.');
+        setError(t('profile.error_avatar'));
         setTimeout(() => setError(null), 3000);
       }
     }
@@ -56,10 +58,10 @@ const Profile: React.FC = () => {
     try {
       const response = await api.put(`/profile/me`, { name, company, bio });
       updateUser(response.data);
-      setSuccess('Perfil atualizado com sucesso!');
+      setSuccess(t('profile.success_profile'));
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError('Erro ao atualizar o perfil.');
+      setError(t('profile.error_profile'));
     } finally {
       setLoading(false);
     }
@@ -85,7 +87,7 @@ const Profile: React.FC = () => {
               />
             </label>
           </div>
-          <h2 className="profile-name-display">{name || 'Seu Nome'}</h2>
+          <h2 className="profile-name-display">{name || t('profile.name_placeholder')}</h2>
           <span className="profile-email-display">{user?.email}</span>
         </header>
 
@@ -103,15 +105,15 @@ const Profile: React.FC = () => {
           )}
 
           <Form onSubmit={handleSubmit} className="registration-form">
-            <div className="form-section-title">Informações Pessoais</div>
+            <div className="form-section-title">{t('profile.personal_info')}</div>
             
             <div className="input-group-custom">
-              <label>Nome Completo</label>
+              <label>{t('profile.full_name')}</label>
               <div className="input-wrapper">
                 <FaUser className="input-icon" />
                 <Form.Control 
                   type="text" 
-                  placeholder="Seu nome"
+                  placeholder={t('profile.name_placeholder')}
                   value={name} 
                   onChange={e => setName(e.target.value)} 
                 />
@@ -119,28 +121,28 @@ const Profile: React.FC = () => {
             </div>
 
             <div className="input-group-custom">
-              <label>Empresa / Instituição</label>
+              <label>{t('profile.company_label')}</label>
               <div className="input-wrapper">
                 <FaBuilding className="input-icon" />
                 <Form.Control 
                   type="text" 
-                  placeholder="Nome da empresa"
+                  placeholder={t('profile.company_placeholder')}
                   value={company} 
                   onChange={e => setCompany(e.target.value)} 
                 />
               </div>
             </div>
 
-            <div className="form-section-title">Sobre Você</div>
+            <div className="form-section-title">{t('profile.about_you')}</div>
 
             <div className="input-group-custom">
-              <label>Biografia</label>
+              <label>{t('profile.bio_label')}</label>
               <div className="input-wrapper">
                 <FaInfoCircle className="input-icon" style={{ top: '16px', transform: 'none' }} />
                 <Form.Control 
                   as="textarea" 
                   rows={4} 
-                  placeholder="Conte um pouco sobre sua atuação técnica..."
+                  placeholder={t('profile.bio_placeholder')}
                   value={bio} 
                   onChange={e => setBio(e.target.value)} 
                   style={{ paddingLeft: '44px' }}
@@ -153,7 +155,7 @@ const Profile: React.FC = () => {
               className="btn-save-profile w-100" 
               disabled={loading}
             >
-              {loading ? 'Salvando...' : <><FaSave /> Salvar Alterações</>}
+              {loading ? t('profile.saving') : <><FaSave /> {t('profile.save_button')}</>}
             </Button>
           </Form>
         </div>

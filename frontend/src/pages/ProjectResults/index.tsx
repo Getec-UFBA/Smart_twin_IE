@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Container, Row, Col, Card, Button, Form, Dropdown, Alert, Modal } from 'react-bootstrap';
 import api from '../../services/api';
 import './style.css';
@@ -16,6 +17,7 @@ interface IInspection {
 }
 
 const ProjectResults: React.FC = () => {
+  const { t } = useTranslation();
   const { id: projectId } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -31,7 +33,7 @@ const ProjectResults: React.FC = () => {
     if (location.state && location.state.processedImages) {
       setImages(location.state.processedImages);
     } else {
-      setError('Nenhuma imagem processada para exibir.');
+      setError(t('project_results.error_no_images'));
     }
 
     const fetchInspections = async () => {
@@ -44,20 +46,20 @@ const ProjectResults: React.FC = () => {
         }
       } catch (err) {
         console.error('Erro ao buscar inspeções:', err);
-        setError('Falha ao carregar as inspeções do projeto.');
+        setError(t('project_results.error_load_insp'));
       }
     };
 
     if (projectId) {
       fetchInspections();
     }
-  }, [location.state, projectId]);
+  }, [location.state, projectId, t]);
 
   const handleSaveToInspection = async (imageUrl: string, detections: any[], inspectionId: string) => {
     if (!projectId || !inspectionId) {
       setSaveStatus(prev => ({
         ...prev,
-        [imageUrl]: { saving: false, error: 'ID do Projeto ou da Inspeção inválido.', success: false }
+        [imageUrl]: { saving: false, error: t('project_results.error_invalid_ids'), success: false }
       }));
       return;
     }
@@ -86,7 +88,7 @@ const ProjectResults: React.FC = () => {
       };
     } catch (err) {
       console.error('Erro ao salvar imagem na inspeção:', err);
-      const errorMessage = (err as any).response?.data?.error || 'Erro desconhecido ao salvar imagem.';
+      const errorMessage = (err as any).response?.data?.error || t('project_results.error_save_image');
       setSaveStatus(prev => ({
         ...prev,
         [imageUrl]: { saving: false, error: errorMessage, success: false }
@@ -96,7 +98,7 @@ const ProjectResults: React.FC = () => {
 
   const handleSaveAllToSelected = async () => {
     if (!selectedGlobalInspectionId) {
-      alert('Por favor, selecione uma inspeção primeiro.');
+      alert(t('project_results.select_insp_first'));
       return;
     }
 
@@ -121,7 +123,7 @@ const ProjectResults: React.FC = () => {
       <Container>
         <Alert variant="danger" className="mt-4">{error}</Alert>
         <Button variant="outline-primary" onClick={() => navigate(`/projetos/${projectId}`)}>
-          <FaArrowLeft className="me-2" /> Voltar ao Projeto
+          <FaArrowLeft className="me-2" /> {t('project_results.back_to_project')}
         </Button>
       </Container>
     );
@@ -131,12 +133,12 @@ const ProjectResults: React.FC = () => {
     <Container fluid className="project-results-container py-4">
       <Row className="mb-4 align-items-center">
         <Col>
-          <h1 className="h3 mb-1">Resultados do Processamento</h1>
-          <p className="text-muted">Revise as detecções e salve as imagens nas inspeções desejadas.</p>
+          <h1 className="h3 mb-1">{t('project_results.title')}</h1>
+          <p className="text-muted">{t('project_results.subtitle')}</p>
         </Col>
         <Col xs="auto">
           <Button variant="outline-secondary" onClick={() => navigate(`/projetos/${projectId}`)}>
-            <FaArrowLeft className="me-2" /> Voltar
+            <FaArrowLeft className="me-2" /> {t('project_results.back')}
           </Button>
         </Col>
       </Row>
@@ -146,13 +148,13 @@ const ProjectResults: React.FC = () => {
           <Row className="align-items-end g-3">
             <Col md={5}>
               <Form.Group>
-                <Form.Label className="fw-bold">Salvar imagens em:</Form.Label>
+                <Form.Label className="fw-bold">{t('project_results.save_in')}</Form.Label>
                 <Form.Select 
                   value={selectedGlobalInspectionId} 
                   onChange={(e) => setSelectedGlobalInspectionId(e.target.value)}
                   className="form-select-lg"
                 >
-                  <option value="" disabled>Selecione uma inspeção...</option>
+                  <option value="" disabled>{t('project_results.select_inspection')}</option>
                   {inspections.map(insp => (
                     <option key={insp.id} value={insp.id}>{insp.inspectionObjective}</option>
                   ))}
@@ -167,7 +169,7 @@ const ProjectResults: React.FC = () => {
                 disabled={!selectedGlobalInspectionId || images.every(img => saveStatus[img.url]?.success)}
                 className="px-4"
               >
-                <FaSave className="me-2" /> Salvar Todas Pendentes
+                <FaSave className="me-2" /> {t('project_results.save_all')}
               </Button>
             </Col>
           </Row>
@@ -188,7 +190,7 @@ const ProjectResults: React.FC = () => {
                 />
                 {saveStatus[image.url]?.success && (
                   <div className="save-badge">
-                    <FaCheckCircle className="me-1" /> Salvo
+                    <FaCheckCircle className="me-1" /> {t('project_results.saved')}
                   </div>
                 )}
               </div>
@@ -201,11 +203,11 @@ const ProjectResults: React.FC = () => {
                       disabled={saveStatus[image.url]?.saving || saveStatus[image.url]?.success}
                       className="w-100"
                     >
-                      {saveStatus[image.url]?.saving ? 'Salvando...' : saveStatus[image.url]?.success ? 'Salvo!' : 'Salvar nesta...'}
+                      {saveStatus[image.url]?.saving ? t('project_results.saving') : saveStatus[image.url]?.success ? t('project_results.saved') : t('project_results.save_button')}
                     </Dropdown.Toggle>
 
                     <Dropdown.Menu className="shadow">
-                      <Dropdown.Header>Escolha a Inspeção</Dropdown.Header>
+                      <Dropdown.Header>{t('project_results.choose_inspection')}</Dropdown.Header>
                       {inspections.length > 0 ? (
                         inspections.map(inspection => (
                           <Dropdown.Item 
@@ -216,7 +218,7 @@ const ProjectResults: React.FC = () => {
                           </Dropdown.Item>
                         ))
                       ) : (
-                        <Dropdown.Item disabled>Nenhuma inspeção encontrada</Dropdown.Item>
+                        <Dropdown.Item disabled>{t('project_results.no_inspections')}</Dropdown.Item>
                       )}
                     </Dropdown.Menu>
                   </Dropdown>
@@ -247,7 +249,7 @@ const ProjectResults: React.FC = () => {
         className="result-preview-modal"
       >
         <Modal.Header closeButton className="border-0">
-          <Modal.Title>Imagem Processada {expandedImage ? expandedImage.index + 1 : ''}</Modal.Title>
+          <Modal.Title>{t('project_results.title')} {expandedImage ? expandedImage.index + 1 : ''}</Modal.Title>
         </Modal.Header>
         <Modal.Body className="text-center p-0 pb-3">
           {expandedImage && (

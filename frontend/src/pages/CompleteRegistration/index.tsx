@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import PasswordInput from '../../components/PasswordInput';
-import { FaEnvelope, FaShieldAlt, FaKey, FaUserCheck, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
+import { FaEnvelope, FaShieldAlt, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
 import './style.css';
 
 const API_URL = 'http://localhost:3001';
 
-const securityQuestions = [
-  "Qual o nome do seu primeiro animal de estimação?",
-  "Qual o nome de solteira da sua mãe?",
-  "Em que cidade você nasceu?",
-  "Qual era o modelo do seu primeiro carro?",
-];
-
 const CompleteRegistration: React.FC = () => {
+  const { t } = useTranslation();
+  
+  const securityQuestions = [
+    t('security_questions.pet'),
+    t('security_questions.mother'),
+    t('security_questions.city'),
+    t('security_questions.car'),
+  ];
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,7 +34,7 @@ const CompleteRegistration: React.FC = () => {
     setSuccess(null);
 
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem.');
+      setError(t('complete_registration.error_mismatch'));
       return;
     }
 
@@ -44,15 +47,15 @@ const CompleteRegistration: React.FC = () => {
         securityQuestion: question,
         securityAnswer: answer,
       });
-      setSuccess('Cadastro finalizado com sucesso! Redirecionando...');
+      setSuccess(t('complete_registration.success_message'));
       setTimeout(() => {
         navigate('/login');
       }, 3000);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.error || 'Erro ao finalizar o cadastro.');
+        setError(err.response.data.error || t('complete_registration.error_complete'));
       } else {
-        setError('Erro desconhecido ao finalizar o cadastro.');
+        setError(t('complete_registration.error_unknown'));
       }
       console.error(err);
     } finally {
@@ -63,8 +66,8 @@ const CompleteRegistration: React.FC = () => {
   return (
     <div className="complete-registration-container">
       <div className="complete-registration-box animate-fade-in">
-        <h2>Finalizar Cadastro</h2>
-        <p className="subtitle">Defina sua senha e uma pergunta de segurança para proteger sua conta.</p>
+        <h2>{t('complete_registration.title')}</h2>
+        <p className="subtitle">{t('complete_registration.subtitle')}</p>
         
         <form onSubmit={handleSubmit} className="registration-form">
           {error && (
@@ -79,7 +82,7 @@ const CompleteRegistration: React.FC = () => {
           )}
 
           <div className="input-group-custom">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t('complete_registration.email_label')}</label>
             <div className="input-wrapper">
               <FaEnvelope className="input-icon" />
               <input 
@@ -96,7 +99,7 @@ const CompleteRegistration: React.FC = () => {
           <PasswordInput
             id="password"
             name="password"
-            label="Senha"
+            label={t('complete_registration.password_label')}
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
@@ -105,30 +108,37 @@ const CompleteRegistration: React.FC = () => {
           <PasswordInput
             id="confirmPassword"
             name="confirmPassword"
-            label="Confirme a senha"
+            label={t('complete_registration.confirm_password_label')}
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             required
           />
 
           <div className="input-group-custom">
-            <label htmlFor="securityQuestion">Pergunta de Segurança</label>
+            <label htmlFor="securityQuestion">{t('complete_registration.security_question_label')}</label>
             <div className="input-wrapper">
               <FaShieldAlt className="input-icon" />
-              <select id="securityQuestion" value={question} onChange={e => setQuestion(e.target.value)} required>
-                {securityQuestions.map(q => <option key={q} value={q}>{q}</option>)}
+              <select 
+                id="securityQuestion" 
+                value={question} 
+                onChange={e => setQuestion(e.target.value)}
+                required
+              >
+                {securityQuestions.map((q, idx) => (
+                  <option key={idx} value={q}>{q}</option>
+                ))}
               </select>
             </div>
           </div>
 
           <div className="input-group-custom">
-            <label htmlFor="securityAnswer">Sua Resposta</label>
+            <label htmlFor="securityAnswer">{t('complete_registration.answer_label')}</label>
             <div className="input-wrapper">
-              <FaKey className="input-icon" />
+              <FaShieldAlt className="input-icon" />
               <input 
                 type="text" 
                 id="securityAnswer" 
-                placeholder="Digite sua resposta"
+                placeholder={t('complete_registration.answer_placeholder')}
                 value={answer} 
                 onChange={e => setAnswer(e.target.value)} 
                 required 
@@ -136,14 +146,10 @@ const CompleteRegistration: React.FC = () => {
             </div>
           </div>
 
-          <button type="submit" className="complete-registration-button" disabled={loading}>
-            {loading ? 'Processando...' : <><FaUserCheck /> Finalizar Cadastro</>}
+          <button type="submit" className="registration-button" disabled={loading}>
+            {loading ? t('complete_registration.completing') : t('complete_registration.submit_button')}
           </button>
         </form>
-
-        <div className="back-to-login">
-          <Link to="/login">Voltar para o Login</Link>
-        </div>
       </div>
     </div>
   );

@@ -488,6 +488,61 @@ class ProjectController {
       return res.status(500).json({ error: 'Erro interno do servidor ao gerar relatório PDF.' });
     }
   }
+
+  public async saveImageToInspection(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, inspectionId } = req.params;
+    const { imageData, detections } = req.body;
+
+    if (!projectId || !inspectionId || !imageData) {
+      return res.status(400).json({ error: 'ID do projeto, ID da inspeção e dados da imagem são obrigatórios.' });
+    }
+
+    const projectService = new ProjectService();
+    try {
+      const parsedDetections = typeof detections === 'string' ? JSON.parse(detections) : detections;
+      const newImage = await projectService.saveImageToInspection({
+        projectId,
+        inspectionId,
+        imageData,
+        detections: parsedDetections,
+      });
+      return res.status(201).json(newImage);
+    } catch (error) {
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message });
+      }
+      return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+  }
+
+  public async updateDetectionMaintenance(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, inspectionId } = req.params;
+    const { detectionIds, maintenanceAt, maintenanceResponsible, maintenanceNotes, maintenanceCost, status } = req.body;
+
+    if (!projectId || !inspectionId || !detectionIds || !Array.isArray(detectionIds) || !status) {
+      return res.status(400).json({ error: 'ID do projeto, ID da inspeção, IDs das detecções e status são obrigatórios.' });
+    }
+
+    const projectService = new ProjectService();
+    try {
+      const updatedProject = await projectService.updateDetectionMaintenance({
+        projectId,
+        inspectionId,
+        detectionIds,
+        maintenanceAt: maintenanceAt || undefined,
+        maintenanceResponsible: maintenanceResponsible || undefined,
+        maintenanceNotes: maintenanceNotes || undefined,
+        maintenanceCost: maintenanceCost ? Number(maintenanceCost) : undefined,
+        status,
+      });
+      return res.json(updatedProject);
+    } catch (error) {
+      if (error instanceof Error) {
+        return res.status(400).json({ error: error.message });
+      }
+      return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+  }
 }
 
 export default ProjectController;

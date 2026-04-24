@@ -5,17 +5,29 @@ export interface IOAE {
 }
 
 export interface IDetection {
+  id: string;
   class_name: string;
   confidence: number;
   box: { x1: number; y1: number; x2: number; y2: number };
+  maintenanceAt?: string;
+  maintenanceResponsible?: string;
+  maintenanceNotes?: string;
+  maintenanceCost?: number;
+  status?: 'pending' | 'resolved';
 }
 
 export interface IGeoDetection {
+  id: string;
   class_name: string;
   confidence: number;
   pixel_box: { x1: number; y1: number; x2: number; y2: number };
   geo_box: { lat1: number; lon1: number; lat2: number; lon2: number };
   center: { lat: number; lon: number };
+  maintenanceAt?: string;
+  maintenanceResponsible?: string;
+  maintenanceNotes?: string;
+  maintenanceCost?: number;
+  status?: 'pending' | 'resolved';
 }
 
 export interface IImage {

@@ -1,23 +1,25 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { Row, Col, Card, Button, Form, Modal, Alert, Badge, ProgressBar } from 'react-bootstrap';
 import './style.css';
 import path from 'path-browserify';
 import { 
-  FaCog, FaPencilAlt, FaTrash, FaUpload, FaDownload, 
+  FaCog, FaTrash, FaUpload, FaDownload, 
   FaClipboardList, FaProjectDiagram, FaMapMarkedAlt, 
-  FaImages, FaChartLine, FaPlus, FaCloudUploadAlt, FaFolderOpen, FaTools,
-  FaChevronLeft, FaChevronRight 
+  FaImages, FaChartLine, FaPlus, FaCloudUploadAlt, FaTools,
+  FaChevronLeft, FaChevronRight, FaHammer 
 } from 'react-icons/fa';
-import type { IProject, IInspection, IImage, IOrthoResult } from '../../models/IProject';
+import type { IProject, IInspection } from '../../models/IProject';
+import MaintenanceFeedback from '../../components/MaintenanceFeedback';
 
 const ProjectView: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<IProject | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [processing, setProcessing] = useState(false);
   const [processingType, setProcessingType] = useState<'images' | 'ortho'>('images');
@@ -30,6 +32,7 @@ const ProjectView: React.FC = () => {
   // Controle de Visualização
   const [activeInspection, setActiveInspection] = useState<IInspection | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   
   const [newInspectionObjective, setNewInspectionObjective] = useState('');
   const [inspectionType, setInspectionType] = useState('Preventiva');
@@ -55,7 +58,6 @@ const ProjectView: React.FC = () => {
         if (updated) setActiveInspection(updated);
       }
     } catch (err) {
-      setError('Erro ao carregar o projeto.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -64,7 +66,7 @@ const ProjectView: React.FC = () => {
 
   useEffect(() => {
     if (id) fetchProject();
-  }, [id]);
+  }, [id, fetchProject]);
 
   // Navegação por teclado
   useEffect(() => {
@@ -112,7 +114,7 @@ const ProjectView: React.FC = () => {
       setShowEditModal(false);
       fetchProject();
     } catch (err) {
-      alert('Erro ao atualizar projeto.');
+      alert(t('project_view.error_update'));
     }
   };
 
@@ -128,18 +130,18 @@ const ProjectView: React.FC = () => {
       setShowCreateInspectionModal(false);
       fetchProject();
     } catch (err) {
-      alert('Erro ao criar inspeção.');
+      alert(t('project_view.error_create_insp'));
     }
   };
 
   const handleDeleteInspection = async (inspectionId: string) => {
-    if (!project || !window.confirm('Excluir esta inspeção permanentemente?')) return;
+    if (!project || !window.confirm(t('project_view.confirm_delete_insp'))) return;
     try {
       await api.delete(`/projects/${project.id}/inspections/${inspectionId}`);
       if (activeInspection?.id === inspectionId) setActiveInspection(null);
       fetchProject();
     } catch (err) {
-      alert('Erro ao excluir inspeção.');
+      alert(t('project_view.error_delete_insp'));
     }
   };
 
@@ -159,7 +161,7 @@ const ProjectView: React.FC = () => {
     if (selectedFiles.length === 0 || !project || !activeInspection) return;
     setProcessing(true);
     setProgress(0);
-    setProgressStatus('Iniciando transferência...');
+    setProgressStatus(t('project_view.progress_starting'));
     
     const formData = new FormData();
     try {
@@ -168,20 +170,21 @@ const ProjectView: React.FC = () => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setProgress(percentCompleted * 0.4); 
           if (percentCompleted === 100) {
-            setProgressStatus('IA processando (pode demorar)...');
+            setProgressStatus(t('project_view.progress_ai'));
             startFakeProgress(40, 98, 1500);
           } else {
-            setProgressStatus(`Enviando arquivos: ${percentCompleted}%`);
+            setProgressStatus(t('project_view.progress_uploading', { percent: percentCompleted }));
           }
         }
       };
 
       if (processingType === 'images') {
         selectedFiles.forEach(file => formData.append('images', file));
+        formData.append('projectId', project.id);
         formData.append('inspectionId', activeInspection.id);
-        const response = await api.post('/projects/process-images', formData, config);
+        await api.post('/projects/process-images', formData, config);
         setProgress(100);
-        setProgressStatus('Finalizado! Redirecionando...');
+        setProgressStatus(t('project_view.progress_finished'));
         setTimeout(() => {
           setShowUploadModal(false);
           fetchProject();
@@ -194,7 +197,7 @@ const ProjectView: React.FC = () => {
         formData.append('inspectionId', activeInspection.id);
         await api.post('/projects/process-ortho', formData, { ...config, timeout: 0 });
         setProgress(100);
-        setProgressStatus('Ortomosaico processado com sucesso!');
+        setProgressStatus(t('project_view.progress_ortho_success'));
         setTimeout(() => {
           setShowUploadModal(false);
           fetchProject();
@@ -203,7 +206,7 @@ const ProjectView: React.FC = () => {
         }, 1500);
       }
     } catch (err) {
-      alert('Erro no processamento.');
+      alert(t('project_view.error_process'));
       setProcessing(false);
       setProgress(0);
     } finally {
@@ -224,14 +227,14 @@ const ProjectView: React.FC = () => {
       link.download = `relatorio-${inspectionId}.pdf`;
       link.click();
     } catch (err) {
-      alert('Erro ao gerar relatório.');
+      alert(t('project_view.error_report'));
     } finally {
       setIsGeneratingReport(false);
     }
   };
 
-  if (loading) return <div className="p-4">Carregando Centro de Comando...</div>;
-  if (!project) return <div className="p-4">Projeto não encontrado.</div>;
+  if (loading) return <div className="p-4">{t('project_view.loading_center')}</div>;
+  if (!project) return <div className="p-4">{t('project_view.project_not_found')}</div>;
 
   return (
     <div className="project-view-container">
@@ -244,19 +247,19 @@ const ProjectView: React.FC = () => {
               <FaCog />
             </Button>
           </div>
-          <p className="small text-muted mb-0 text-truncate">{project.address || 'Sem endereço'}</p>
+          <p className="small text-muted mb-0 text-truncate">{project.address || t('project_view.no_address')}</p>
           <div className="mt-3 d-flex gap-1 flex-wrap">
-            {project.modules.maintenance && <Badge className="badge-custom-green" pill>Manutenção</Badge>}
-            {project.modules.security && <Badge className="badge-custom-warning" pill>Segurança</Badge>}
-            {project.modules.progress && <Badge className="badge-custom-info" pill>Progresso</Badge>}
+            {project.modules.maintenance && <Badge className="badge-custom-green" pill>{t('projects.maintenance')}</Badge>}
+            {project.modules.security && <Badge className="badge-custom-warning" pill>{t('projects.security')}</Badge>}
+            {project.modules.progress && <Badge className="badge-custom-info" pill>{t('projects.progress')}</Badge>}
           </div>
         </div>
 
         <div className="sidebar-content">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <span className="text-uppercase fw-bold small text-muted">Inspeções</span>
+            <span className="text-uppercase fw-bold small text-muted">{t('project_view.inspections_title')}</span>
             <Button variant="link" size="sm" className="p-0 text-success" onClick={() => setShowCreateInspectionModal(true)}>
-              <FaPlus /> Nova
+              <FaPlus /> {t('project_view.new_button')}
             </Button>
           </div>
 
@@ -266,8 +269,8 @@ const ProjectView: React.FC = () => {
           >
             <div className="inspection-icon"><FaChartLine /></div>
             <div className="inspection-info">
-              <h6>Visão Geral</h6>
-              <span>Estatísticas do Projeto</span>
+              <h6>{t('project_view.overview')}</h6>
+              <span>{t('project_view.project_stats')}</span>
             </div>
           </div>
 
@@ -282,7 +285,7 @@ const ProjectView: React.FC = () => {
               </div>
               <div className="inspection-info text-truncate">
                 <h6 className="text-truncate">{insp.inspectionObjective}</h6>
-                <span>{insp.inspectionDate} • {insp.images.length} fotos</span>
+                <span>{insp.inspectionDate} • {t('project_view.photos_count', { count: insp.images.length })}</span>
               </div>
             </div>
           ))}
@@ -294,12 +297,12 @@ const ProjectView: React.FC = () => {
         {!activeInspection ? (
           /* DASHBOARD DE VISÃO GERAL */
           <div className="animate__animated animate__fadeIn">
-            <h3 className="fw-bold mb-4">Dashboard do Projeto</h3>
+            <h3 className="fw-bold mb-4">{t('project_view.dashboard_title')}</h3>
             <Row>
               <Col md={4}>
                 <Card className="modern-card stat-card">
                   <div className="stat-value">{project.inspections?.length || 0}</div>
-                  <div className="stat-label">Total de Inspeções</div>
+                  <div className="stat-label">{t('project_view.stat_total_inspections')}</div>
                 </Card>
               </Col>
               <Col md={4}>
@@ -307,7 +310,7 @@ const ProjectView: React.FC = () => {
                   <div className="stat-value">
                     {project.inspections?.reduce((acc, i) => acc + i.images.length, 0)}
                   </div>
-                  <div className="stat-label">Fotos Analisadas</div>
+                  <div className="stat-label">{t('project_view.stat_analyzed_photos')}</div>
                 </Card>
               </Col>
               <Col md={4}>
@@ -315,27 +318,29 @@ const ProjectView: React.FC = () => {
                   <div className="stat-value">
                     {project.inspections?.reduce((acc, i) => acc + (i.orthoResults?.length || 0), 0)}
                   </div>
-                  <div className="stat-label">Mapas Processados</div>
+                  <div className="stat-label">{t('project_view.stat_processed_maps')}</div>
                 </Card>
               </Col>
             </Row>
             <Card className="modern-card p-5 mt-4 text-center text-muted border-dashed" style={{ border: '2px dashed #ddd' }}>
               <FaProjectDiagram size={48} className="mb-3 opacity-25" />
-              <h5>Inicie uma análise</h5>
-              <p>Selecione uma inspeção na barra lateral para visualizar os dados ou crie uma nova inspeção para começar o processamento.</p>
+              <h5>{t('project_view.start_analysis_title')}</h5>
+              <p>{t('project_view.start_analysis_desc')}</p>
               <Button variant="success" onClick={() => setShowCreateInspectionModal(true)} className="mt-2 py-2 px-4 fw-bold">
-                + Gerar Nova Inspeção
+                {t('project_view.generate_new_inspection')}
               </Button>
             </Card>
           </div>
         ) : (
           /* VISUALIZAÇÃO DA INSPEÇÃO ATIVA */
           <div className="animate__animated animate__fadeIn">
-            <div className="d-flex justify-content-between align-items-start mb-4 bg-white p-4 rounded-4 shadow-sm border">
+            <div className="d-flex justify-content-between align-items-start project-header-panel">
               <div>
                 <div className="d-flex align-items-center gap-2 mb-1">
                   <h3 className="fw-bold mb-0">{activeInspection.inspectionObjective}</h3>
-                  <Badge bg="success" className="bg-opacity-10 text-success">{activeInspection.inspectionType}</Badge>
+                  <Badge bg="success" className="bg-opacity-10 text-success">
+                    {activeInspection.inspectionType === 'Preventiva' ? t('project_view.modal_insp_type_preventive') : t('project_view.modal_insp_type_corrective')}
+                  </Badge>
                 </div>
                 <p className="text-muted mb-0">
                   <FaChartLine className="me-1" /> {activeInspection.inspectionDate} • Resp: {activeInspection.inspectionResponsible}
@@ -351,14 +356,21 @@ const ProjectView: React.FC = () => {
                     setShowUploadModal(true);
                   }}
                 >
-                  <FaCloudUploadAlt /> Processar Novos Dados
+                  <FaCloudUploadAlt /> {t('project_view.process_new_data')}
                 </Button>
                 <Button 
                   variant="outline-primary" 
                   onClick={() => handleGenerateInspectionPdfReport(activeInspection.id)}
                   disabled={isGeneratingReport}
                 >
-                  {isGeneratingReport ? 'Gerando...' : <><FaDownload className="me-2" /> PDF</>}
+                  {isGeneratingReport ? t('project_view.generating') : <><FaDownload className="me-2" /> PDF</>}
+                </Button>
+                <Button 
+                  variant="outline-success" 
+                  className="d-flex align-items-center gap-2"
+                  onClick={() => setShowMaintenanceModal(true)}
+                >
+                  <FaHammer /> {t('project_view.maintenance', 'Manutenção')}
                 </Button>
                 <Button variant="outline-danger" onClick={() => handleDeleteInspection(activeInspection.id)}>
                   <FaTrash />
@@ -370,7 +382,7 @@ const ProjectView: React.FC = () => {
             {activeInspection.orthoResults && activeInspection.orthoResults.length > 0 && (
               <div className="mb-5">
                 <h5 className="fw-bold mb-3 d-flex align-items-center gap-2">
-                  <FaMapMarkedAlt className="text-success" /> Ortomosaicos Processados
+                  <FaMapMarkedAlt className="text-success" /> {t('project_view.ortho_section_title')}
                 </h5>
                 <Row>
                   {activeInspection.orthoResults.map((ortho, idx) => (
@@ -380,8 +392,7 @@ const ProjectView: React.FC = () => {
                           <Col md={4}>
                             <div 
                               className="position-relative"
-                              onClick={() => {}} // Ortomosaico por enquanto não entra no carrosel de fotos comuns
-                              style={{ cursor: 'pointer', height: '100%', minHeight: '200px', background: '#f8f9fa' }}
+                              style={{ cursor: 'pointer', height: '100%', minHeight: '200px', background: 'var(--bg-main)' }}
                             >
                               <img 
                                 src={`http://localhost:3001${ortho.previewUrl}`} 
@@ -394,11 +405,11 @@ const ProjectView: React.FC = () => {
                             <Card.Body className="d-flex flex-column justify-content-center">
                               <h6 className="fw-bold mb-1">{path.basename(ortho.url)}</h6>
                               <div className="ortho-info-badge mb-3 w-fit-content">
-                                {ortho.detections.length} anomalias detectadas
+                                {t('project_view.anomalies_detected', { count: ortho.detections.length })}
                               </div>
                               <div className="d-flex gap-2">
                                 <Button size="sm" variant="primary" onClick={() => window.open(`http://localhost:3001${ortho.url}`)}>
-                                  <FaDownload className="me-1" /> TIFF Anotado
+                                  <FaDownload className="me-1" /> {t('project_view.download_tiff')}
                                 </Button>
                               </div>
                             </Card.Body>
@@ -414,7 +425,7 @@ const ProjectView: React.FC = () => {
             {/* Galeria de Imagens */}
             <div>
               <h5 className="fw-bold mb-3 d-flex align-items-center gap-2">
-                <FaImages className="text-success" /> Galeria de Fotos ({activeInspection.images.length})
+                <FaImages className="text-success" /> {t('project_view.gallery_title')} ({activeInspection.images.length})
               </h5>
               {activeInspection.images.length > 0 ? (
                 <div className="results-grid">
@@ -429,9 +440,9 @@ const ProjectView: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-5 border rounded-4 bg-light opacity-50">
+                <div className="text-center py-5 border rounded-4 bg-custom-light opacity-50">
                   <FaImages size={32} className="mb-2" />
-                  <p className="mb-0">Nenhuma imagem comum processada nesta inspeção.</p>
+                  <p className="mb-0">{t('project_view.no_images')}</p>
                 </div>
               )}
             </div>
@@ -442,27 +453,27 @@ const ProjectView: React.FC = () => {
       {/* MODAL DE UPLOAD / PROCESSAMENTO */}
       <Modal show={showUploadModal} onHide={() => !processing && setShowUploadModal(false)} centered size="lg">
         <Modal.Header closeButton={!processing}>
-          <Modal.Title className="fw-bold">Adicionar Dados à Inspeção</Modal.Title>
+          <Modal.Title className="fw-bold">{t('project_view.modal_upload_title')}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {!processing ? (
             <>
               <Alert variant="info" className="border-0 rounded-4 mb-4">
-                Os dados carregados serão vinculados automaticamente à inspeção: <strong>{activeInspection?.inspectionObjective}</strong>
+                {t('project_view.modal_upload_alert')} <strong>{activeInspection?.inspectionObjective}</strong>
               </Alert>
 
               <Form.Group className="mb-4 text-center">
                 <div className="d-flex justify-content-center gap-4">
                   <Form.Check
                     type="radio"
-                    label="Múltiplas Fotos"
+                    label={t('project_view.modal_p_type_images')}
                     name="pType"
                     checked={processingType === 'images'}
                     onChange={() => setProcessingType('images')}
                   />
                   <Form.Check
                     type="radio"
-                    label="Ortomosaico (TIFF/JPG)"
+                    label={t('project_view.modal_p_type_ortho')}
                     name="pType"
                     checked={processingType === 'ortho'}
                     onChange={() => setProcessingType('ortho')}
@@ -477,10 +488,10 @@ const ProjectView: React.FC = () => {
               >
                 <FaUpload size={32} className="text-success mb-3" />
                 <h6 className="fw-bold">
-                  {selectedFiles.length ? `${selectedFiles.length} arquivos prontos` : 'Clique para selecionar arquivos'}
+                  {selectedFiles.length ? t('project_view.modal_upload_ready', { count: selectedFiles.length }) : t('project_view.modal_upload_click')}
                 </h6>
                 <p className="small text-muted mb-0">
-                  {processingType === 'images' ? 'Suporta JPG, PNG' : 'Suporta GeoTIFF ou JPEGs gigantes'}
+                  {processingType === 'images' ? t('project_view.modal_upload_support_images') : t('project_view.modal_upload_support_ortho')}
                 </p>
                 <input 
                   id="fileInput"
@@ -497,7 +508,7 @@ const ProjectView: React.FC = () => {
                 disabled={!selectedFiles.length}
                 onClick={handleProcess}
               >
-                Iniciar Processamento
+                {t('project_view.modal_start_process')}
               </Button>
             </>
           ) : (
@@ -512,8 +523,8 @@ const ProjectView: React.FC = () => {
               />
               <p className="text-muted mt-3 small">
                 {processingType === 'ortho' 
-                  ? 'Ortomosaicos são arquivos grandes. Por favor, mantenha esta janela aberta.' 
-                  : 'Analisando imagens. O tempo depende da quantidade de fotos.'}
+                  ? t('project_view.modal_process_ortho_tip') 
+                  : t('project_view.modal_process_images_tip')}
               </p>
             </div>
           )}
@@ -522,36 +533,36 @@ const ProjectView: React.FC = () => {
 
       {/* MODAL DE CRIAÇÃO DE INSPEÇÃO */}
       <Modal show={showCreateInspectionModal} onHide={() => setShowCreateInspectionModal(false)} centered>
-        <Modal.Header closeButton><Modal.Title className="fw-bold">Nova Inspeção</Modal.Title></Modal.Header>
+        <Modal.Header closeButton><Modal.Title className="fw-bold">{t('project_view.modal_new_insp_title')}</Modal.Title></Modal.Header>
         <Modal.Body>
           <Form onSubmit={e => { e.preventDefault(); handleCreateInspection(); }}>
             <Form.Group className="mb-3">
-              <Form.Label>Objetivo</Form.Label>
-              <Form.Control required value={newInspectionObjective} onChange={e => setNewInspectionObjective(e.target.value)} placeholder="Ex: Fachada Norte" />
+              <Form.Label>{t('project_view.modal_insp_objective')}</Form.Label>
+              <Form.Control required value={newInspectionObjective} onChange={e => setNewInspectionObjective(e.target.value)} placeholder={t('project_view.modal_insp_objective_placeholder')} />
             </Form.Group>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Data</Form.Label>
+                  <Form.Label>{t('project_view.modal_insp_date')}</Form.Label>
                   <Form.Control type="date" required value={inspectionDate} onChange={e => setInspectionDate(e.target.value)} />
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <FaTools className="me-2" />
-                  <Form.Label>Tipo</Form.Label>
+                  <Form.Label>{t('project_view.modal_insp_type')}</Form.Label>
                   <Form.Select value={inspectionType} onChange={e => setInspectionType(e.target.value)}>
-                    <option value="Preventiva">Preventiva</option>
-                    <option value="Corretiva">Corretiva</option>
+                    <option value="Preventiva">{t('project_view.modal_insp_type_preventive')}</option>
+                    <option value="Corretiva">{t('project_view.modal_insp_type_corrective')}</option>
                   </Form.Select>
                 </Form.Group>
               </Col>
             </Row>
             <Form.Group className="mb-3">
-              <Form.Label>Responsável Técnico</Form.Label>
-              <Form.Control required value={inspectionResponsible} onChange={e => setInspectionResponsible(e.target.value)} placeholder="Nome do Engenheiro" />
+              <Form.Label>{t('project_view.modal_insp_responsible')}</Form.Label>
+              <Form.Control required value={inspectionResponsible} onChange={e => setInspectionResponsible(e.target.value)} placeholder={t('project_view.modal_insp_responsible_placeholder')} />
             </Form.Group>
-            <Button variant="primary" type="submit" className="w-100">Criar Agora</Button>
+            <Button variant="primary" type="submit" className="w-100">{t('project_view.modal_insp_create')}</Button>
           </Form>
         </Modal.Body>
       </Modal>
@@ -567,7 +578,7 @@ const ProjectView: React.FC = () => {
         <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="small text-muted">
             {expandedImageIndex !== null && activeInspection && (
-              `Imagem ${expandedImageIndex + 1} de ${activeInspection.images.length} — ${path.basename(activeInspection.images[expandedImageIndex].url)}`
+              `${t('project_results.save_button')} ${expandedImageIndex + 1} de ${activeInspection.images.length} — ${path.basename(activeInspection.images[expandedImageIndex].url)}`
             )}
           </Modal.Title>
         </Modal.Header>
@@ -604,15 +615,26 @@ const ProjectView: React.FC = () => {
 
       {/* MODAL EDITAR PROJETO */}
       <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered>
-        <Modal.Header closeButton><Modal.Title>Configurações do Projeto</Modal.Title></Modal.Header>
+        <Modal.Header closeButton><Modal.Title>{t('projects.modal_create_title')}</Modal.Title></Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleUpdateProject}>
-            <Form.Group className="mb-3"><Form.Label>Nome</Form.Label><Form.Control value={editFormData.name || ''} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>Endereço</Form.Label><Form.Control value={editFormData.address || ''} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} /></Form.Group>
-            <Button variant="primary" type="submit" className="w-100">Salvar</Button>
+            <Form.Group className="mb-3"><Form.Label>{t('projects.modal_project_name')}</Form.Label><Form.Control value={editFormData.name || ''} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} /></Form.Group>
+            <Form.Group className="mb-3"><Form.Label>{t('projects.modal_address')}</Form.Label><Form.Control value={editFormData.address || ''} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} /></Form.Group>
+            <Button variant="primary" type="submit" className="w-100">{t('profile.save_button')}</Button>
           </Form>
         </Modal.Body>
       </Modal>
+
+      {/* MODAL DE FEEDBACK DE MANUTENÇÃO */}
+      {activeInspection && project && (
+        <MaintenanceFeedback 
+          show={showMaintenanceModal}
+          onHide={() => setShowMaintenanceModal(false)}
+          inspection={activeInspection}
+          projectId={project.id}
+          onUpdate={fetchProject}
+        />
+      )}
 
     </div>
   );

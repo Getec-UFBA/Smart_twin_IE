@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api, { isAxiosError } from '../../services/api';
 import { FaEnvelope, FaShieldAlt, FaUserPlus, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import './style.css';
 
 const RegisterUser: React.FC = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'user'>('user');
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +20,14 @@ const RegisterUser: React.FC = () => {
 
     try {
       await api.post('/users/pre-register', { email, role });
-      setSuccess(`O convite para ${email} foi enviado com sucesso!`);
+      setSuccess(t('register_user.success_message', { email }));
       setEmail('');
       setRole('user');
     } catch (err: any) {
       if (isAxiosError(err) && err.response) {
-        setError(err.response.data.message || err.response.data.error || 'Erro ao pré-cadastrar usuário.');
+        setError(err.response.data.message || err.response.data.error || t('register_user.error_pre_register'));
       } else {
-        setError('Erro desconhecido ao pré-cadastrar usuário.');
+        setError(t('register_user.error_unknown'));
       }
       console.error(err);
     } finally {
@@ -36,8 +38,8 @@ const RegisterUser: React.FC = () => {
   return (
     <div className="register-user-container">
       <div className="register-user-box animate-fade-in">
-        <h2>Pré-cadastro</h2>
-        <p className="register-user-subtitle">Adicione novos membros à plataforma SMART TWIN-IE</p>
+        <h2>{t('register_user.title')}</h2>
+        <p className="register-user-subtitle">{t('register_user.subtitle')}</p>
         
         <form onSubmit={handleSubmit} className="register-form">
           {error && (
@@ -52,7 +54,7 @@ const RegisterUser: React.FC = () => {
           )}
 
           <div className="input-group-custom">
-            <label htmlFor="email">E-mail institucional</label>
+            <label htmlFor="email">{t('register_user.email_label')}</label>
             <div className="input-wrapper">
               <FaEnvelope className="input-icon" />
               <input
@@ -67,18 +69,18 @@ const RegisterUser: React.FC = () => {
           </div>
 
           <div className="input-group-custom">
-            <label htmlFor="role">Nível de Acesso</label>
+            <label htmlFor="role">{t('register_user.role_label')}</label>
             <div className="input-wrapper">
               <FaShieldAlt className="input-icon" />
               <select id="role" value={role} onChange={e => setRole(e.target.value as 'admin' | 'user')}>
-                <option value="user">Usuário</option>
-                <option value="admin">Administrador</option>
+                <option value="user">{t('register_user.user_option')}</option>
+                <option value="admin">{t('register_user.admin_option')}</option>
               </select>
             </div>
           </div>
 
           <button type="submit" className="register-button" disabled={loading}>
-            {loading ? 'Processando...' : <><FaUserPlus /> Pré-cadastrar</>}
+            {loading ? t('register_user.processing') : <><FaUserPlus /> {t('register_user.submit_button')}</>}
           </button>
         </form>
       </div>

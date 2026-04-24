@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import PasswordInput from '../../components/PasswordInput';
 import { FaEnvelope, FaKey, FaArrowRight, FaCheckCircle, FaExclamationCircle, FaQuestionCircle } from 'react-icons/fa';
@@ -10,6 +11,7 @@ const API_URL = 'http://localhost:3001';
 type Stage = 'enter_email' | 'answer_question' | 'success';
 
 const ForgotPassword = () => {
+  const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>('enter_email');
   const [email, setEmail] = useState('');
   const [securityQuestion, setSecurityQuestion] = useState('');
@@ -28,7 +30,7 @@ const ForgotPassword = () => {
       setSecurityQuestion(response.data.securityQuestion);
       setStage('answer_question');
     } catch (err) {
-      setError('Email não encontrado ou sem pergunta de segurança configurada.');
+      setError(t('forgot_password.error_email_not_found'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -40,7 +42,7 @@ const ForgotPassword = () => {
     setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError('As senhas não coincidem.');
+      setError(t('forgot_password.error_passwords_dont_match'));
       return;
     }
 
@@ -55,9 +57,9 @@ const ForgotPassword = () => {
       setStage('success');
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.error || 'Erro ao redefinir a senha.');
+        setError(err.response.data.error || t('forgot_password.error_reset_failed'));
       } else {
-        setError('Erro desconhecido ao redefinir a senha.');
+        setError(t('forgot_password.error_unknown'));
       }
       console.error(err);
     } finally {
@@ -70,21 +72,21 @@ const ForgotPassword = () => {
       case 'enter_email':
         return (
           <form onSubmit={handleEmailSubmit} className="forgot-password-form">
-            <h2>Esqueci Minha Senha</h2>
-            <p>Informe seu email para recuperar o acesso à sua conta.</p>
+            <h2>{t('forgot_password.title')}</h2>
+            <p>{t('forgot_password.subtitle')}</p>
             {error && (
               <div className="status-alert error d-flex align-items-center gap-2 justify-content-center">
                 <FaExclamationCircle /> {error}
               </div>
             )}
             <div className="input-group-custom">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">{t('forgot_password.email_label')}</label>
               <div className="input-wrapper">
                 <FaEnvelope className="input-icon" />
                 <input 
                   type="email" 
                   id="email" 
-                  placeholder="seu@email.com"
+                  placeholder={t('forgot_password.email_placeholder')}
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
                   required 
@@ -92,15 +94,15 @@ const ForgotPassword = () => {
               </div>
             </div>
             <button type="submit" className="forgot-password-button" disabled={loading}>
-              {loading ? 'Processando...' : <><FaArrowRight /> Continuar</>}
+              {loading ? t('forgot_password.processing') : <><FaArrowRight /> {t('forgot_password.continue_button')}</>}
             </button>
           </form>
         );
       case 'answer_question':
         return (
           <form onSubmit={handleResetSubmit} className="forgot-password-form">
-            <h2>Pergunta de Segurança</h2>
-            <p>Responda à pergunta abaixo para redefinir sua senha.</p>
+            <h2>{t('forgot_password.security_question_title')}</h2>
+            <p>{t('forgot_password.security_question_subtitle')}</p>
             <div className="security-question-text d-flex align-items-center justify-content-center gap-2">
               <FaQuestionCircle /> {securityQuestion}
             </div>
@@ -110,13 +112,13 @@ const ForgotPassword = () => {
               </div>
             )}
             <div className="input-group-custom">
-              <label htmlFor="securityAnswer">Sua Resposta</label>
+              <label htmlFor="securityAnswer">{t('forgot_password.answer_label')}</label>
               <div className="input-wrapper">
                 <FaKey className="input-icon" />
                 <input 
                   type="text" 
                   id="securityAnswer" 
-                  placeholder="Sua resposta"
+                  placeholder={t('forgot_password.answer_placeholder')}
                   value={securityAnswer} 
                   onChange={e => setSecurityAnswer(e.target.value)} 
                   required 
@@ -126,7 +128,7 @@ const ForgotPassword = () => {
             <PasswordInput
               id="newPassword"
               name="newPassword"
-              label="Senha"
+              label={t('forgot_password.password_label')}
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               required
@@ -134,13 +136,13 @@ const ForgotPassword = () => {
             <PasswordInput
               id="confirmPassword"
               name="confirmPassword"
-              label="Confirme a senha"
+              label={t('forgot_password.confirm_password_label')}
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               required
             />
             <button type="submit" className="forgot-password-button" disabled={loading}>
-              {loading ? 'Redefinindo...' : <><FaCheckCircle /> Redefinir Senha</>}
+              {loading ? t('forgot_password.redefining') : <><FaCheckCircle /> {t('forgot_password.reset_button')}</>}
             </button>
           </form>
         );
@@ -148,9 +150,9 @@ const ForgotPassword = () => {
         return (
           <div className="success-container animate-fade-in">
             <FaCheckCircle className="success-icon" />
-            <h2>Senha Redefinida!</h2>
-            <p>Sua senha foi alterada com sucesso. Você já pode acessar sua conta.</p>
-            <Link to="/login" className="forgot-password-button">Ir para o Login</Link>
+            <h2>{t('forgot_password.success_title')}</h2>
+            <p>{t('forgot_password.success_message')}</p>
+            <Link to="/login" className="forgot-password-button">{t('forgot_password.go_to_login')}</Link>
           </div>
         );
     }
@@ -162,7 +164,7 @@ const ForgotPassword = () => {
         {renderStage()}
         {stage !== 'success' && (
           <div className="back-to-login">
-            <Link to="/login">Voltar para o Login</Link>
+            <Link to="/login">{t('forgot_password.back_to_login')}</Link>
           </div>
         )}
       </div>
