@@ -3,6 +3,8 @@ import { Form, Button, Image } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../config/firebase';
 import { FaUser, FaBuilding, FaInfoCircle, FaCamera, FaSave, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import './style.css';
 
@@ -23,29 +25,37 @@ const Profile: React.FC = () => {
       setCompany(user.company || '');
       setBio(user.bio || '');
       if (user.avatarUrl) {
-        setAvatarUrl(`http://localhost:3001/files/${user.avatarUrl}`);
+        setAvatarUrl(user.avatarUrl);
       }
     }
   }, [user]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const data = new FormData();
-      data.append('avatar', e.target.files[0]);
+    if (e.target.files && e.target.files[0] && user) {
+      const file = e.target.files[0];
+      setLoading(true);
 
       try {
-        const response = await api.patch(`/profile/avatar`, data);
-        const updatedUser = response.data;
+        // 1. Upload para Firebase Storage
+        const storageRef = ref(storage, `avatars/${user.id}/${file.name}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadUrl = await getDownloadURL(snapshot.ref);
 
-        if (updatedUser.avatarUrl) {
-          setAvatarUrl(`http://localhost:3001/files/${updatedUser.avatarUrl}`);
-        }
-        updateUser(updatedUser);
+        // 2. Atualiza no Backend
+        const response = await api.patch(`/profile/avatar`, {
+          avatarUrl: downloadUrl
+        });
+        
+        updateUser(response.data);
+        setAvatarUrl(downloadUrl);
         setSuccess(t('profile.success_avatar'));
         setTimeout(() => setSuccess(null), 3000);
       } catch (err) {
+        console.error(err);
         setError(t('profile.error_avatar'));
         setTimeout(() => setError(null), 3000);
+      } finally {
+        setLoading(false);
       }
     }
   };

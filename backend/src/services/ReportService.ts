@@ -156,18 +156,7 @@ class ReportService {
         let orthoResultsHtml = '';
         if (inspection.orthoResults && inspection.orthoResults.length > 0) {
           orthoResultsHtml = inspection.orthoResults.map(ortho => {
-            let orthoImgSrc = '';
-            if (ortho.previewUrl && ortho.previewUrl.startsWith('/files/')) {
-              try {
-                const relativePath = ortho.previewUrl.replace('/files/', '');
-                const absolutePath = path.resolve(__dirname, '..', '..', 'public', 'uploads', relativePath);
-                if (fs.existsSync(absolutePath)) {
-                  orthoImgSrc = pathToFileURL(absolutePath).href;
-                }
-              } catch (err) {
-                console.error(`[ReportService] Erro ao obter URL do preview do ortomosaico: ${ortho.previewUrl}`, err);
-              }
-            }
+            const orthoImgSrc = ortho.previewUrl || '';
 
             return `
               <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #004d40; border-radius: 5px; page-break-inside: avoid; background-color: #fff;">
@@ -213,19 +202,7 @@ class ReportService {
               }
             }
 
-            let imgSrc = '';
-            if (image.url && image.url.startsWith('/files/')) {
-              try {
-                const relativePath = image.url.replace('/files/', '');
-                const absolutePath = path.resolve(__dirname, '..', '..', 'public', 'uploads', relativePath);
-                
-                if (fs.existsSync(absolutePath)) {
-                  imgSrc = pathToFileURL(absolutePath).href;
-                }
-              } catch (err) {
-                console.error(`[ReportService] Erro ao obter URL do arquivo: ${image.url}`, err);
-              }
-            }
+            const imgSrc = image.url || '';
 
             return `
               <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 5px; page-break-inside: avoid;">

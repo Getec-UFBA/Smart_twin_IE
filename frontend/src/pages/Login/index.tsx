@@ -74,7 +74,7 @@ const Login: React.FC = () => {
 
         <footer className="login-footer-links">
           <p>
-            {t('login.no_password')} <Link to="/complete-registration">{t('login.finish_registration')}</Link>
+            {t('login.no_password')} <Link to="/register-user">Cadastre-se</Link>
           </p>
           <p>
             <Link to="/forgot-password">{t('login.forgot_password')}</Link>

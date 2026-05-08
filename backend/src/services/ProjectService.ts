@@ -1,14 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs/promises';
 import path from 'path';
-import uploadConfig from '../config/upload';
+import { storage } from '../config/firebase';
 import ProjectRepository from '../repositories/ProjectRepository';
 import { IProject, IOAE, IInspection, IDetection, IImage, IOrthoResult } from '../models/IProject';
-
-interface IFile {
-  fieldname: string;
-  filename: string;
-}
 
 interface ICreateRequest {
   userId: string;
@@ -18,7 +12,9 @@ interface ICreateRequest {
   responsible: string;
   modules: string;
   oaeData: string;
-  files: IFile[];
+  coverImageUrl: string; // URL já vinda do Firebase Storage (Frontend)
+  bimModelUrl: string;   // URL já vinda do Firebase Storage (Frontend)
+  oaeBimModelUrls: string[]; // Lista de URLs vindas do Frontend
   buildingYear?: string;
   builtArea?: string;
   facadeTypology?: string;
@@ -57,6 +53,7 @@ export interface ISaveReviewedImageRequest {
 
 class ProjectService {
   private projectRepository = new ProjectRepository();
+  private bucket = storage.bucket();
 
   public async create({ 
     userId, 
@@ -66,7 +63,9 @@ class ProjectService {
     responsible, 
     modules, 
     oaeData, 
-    files,
+    coverImageUrl,
+    bimModelUrl,
+    oaeBimModelUrls,
     buildingYear, 
     builtArea,    
     facadeTypology, 
@@ -74,33 +73,20 @@ class ProjectService {
     buildingAcronym, 
     unitDirector   
   }: ICreateRequest): Promise<IProject> {
-    const coverImage = files.find(f => f.fieldname === 'coverImage');
-    const bimModel = files.find(f => f.fieldname === 'bimModel');
-
-    if (!coverImage || !bimModel) {
-      throw new Error('Imagem de capa e modelo BIM principal são obrigatórios.');
-    }
-
     const parsedModules = JSON.parse(modules);
     const parsedOaes = oaeData ? JSON.parse(oaeData) : [];
 
-    const oaeBimModelFiles = files.filter(f => f.fieldname === 'oaeBimModel[]');
-
     const oaeWithFiles: IOAE[] = parsedOaes.map((oae: any, index: number) => {
-      const oaeFile = oaeBimModelFiles[index];
-      if (!oaeFile) {
-        throw new Error(`Arquivo BIM não encontrado para a OAE: ${oae.name}`);
+      const oaeUrl = oaeBimModelUrls[index];
+      if (!oaeUrl) {
+        throw new Error(`URL do modelo BIM não encontrada para a OAE: ${oae.name}`);
       }
       return {
         id: uuidv4(),
         name: oae.name,
-        bimModelUrl: oaeFile.filename,
+        bimModelUrl: oaeUrl,
       };
     });
-
-    if (parsedOaes.length !== oaeBimModelFiles.length) {
-      console.warn('O número de OAEs e de modelo BIM não corresponde.');
-    }
 
     const newProject: IProject = {
       id: uuidv4(),
@@ -109,8 +95,8 @@ class ProjectService {
       address,
       type,
       responsible,
-      coverImageUrl: coverImage.filename,
-      bimModelUrl: bimModel.filename,
+      coverImageUrl,
+      bimModelUrl,
       modules: parsedModules,
       oae: oaeWithFiles,
     };
@@ -172,13 +158,6 @@ class ProjectService {
     const updatedInspections = project.inspections ? [...project.inspections, newInspection] : [newInspection];
 
     await this.projectRepository.update(projectId, { inspections: updatedInspections });
-
-    const inspectionPath = path.resolve(
-      uploadConfig.projectsDirectory,
-      projectId,
-      newInspection.id
-    );
-    await fs.mkdir(inspectionPath, { recursive: true });
 
     return newInspection;
   }
@@ -350,20 +329,18 @@ class ProjectService {
     const imageBuffer = Buffer.from(base64Data, 'base64');
     const newFileName = `${uuidv4()}.jpg`;
 
-    const destinationDir = path.resolve(
-      uploadConfig.projectsDirectory,
-      '..',
-      'processed_images',
-      projectId,
-      inspectionId
-    );
-    await fs.mkdir(destinationDir, { recursive: true });
-    const destinationPath = path.join(destinationDir, newFileName);
-    await fs.writeFile(destinationPath, imageBuffer);
+    const storagePath = `projects/${projectId}/inspections/${inspectionId}/images/${newFileName}`;
+    const file = this.bucket.file(storagePath);
+    
+    await file.save(imageBuffer, {
+      metadata: { contentType: 'image/jpeg' },
+      public: true
+    });
 
-    const relativePath = `/files/processed_images/${projectId}/${inspectionId}/${newFileName}`;
+    const publicUrl = `https://storage.googleapis.com/${this.bucket.name}/${storagePath}`;
+
     const newImage: IImage = {
-      url: relativePath,
+      url: publicUrl,
       detections,
     };
 
@@ -393,22 +370,18 @@ class ProjectService {
     const fileExtension = path.extname(originalFileName);
     const newFileName = `${uuidv4()}${fileExtension}`;
   
-    const destinationDir = path.resolve(
-      uploadConfig.projectsDirectory,
-      '..',
-      'processed_images',
-      projectId,
-      inspectionId
-    );
+    const storagePath = `projects/${projectId}/inspections/${inspectionId}/images/${newFileName}`;
+    const file = this.bucket.file(storagePath);
     
-    await fs.mkdir(destinationDir, { recursive: true });
-    const destinationPath = path.join(destinationDir, newFileName);
-    await fs.writeFile(destinationPath, imageBuffer);
-  
-    const relativePath = `/files/processed_images/${projectId}/${inspectionId}/${newFileName}`;
+    await file.save(imageBuffer, {
+      metadata: { contentType: `image/${fileExtension.replace('.', '')}` },
+      public: true
+    });
+
+    const publicUrl = `https://storage.googleapis.com/${this.bucket.name}/${storagePath}`;
     
     const newImage: IImage = {
-      url: relativePath,
+      url: publicUrl,
       detections,
     };
   
@@ -428,29 +401,10 @@ class ProjectService {
       throw new Error('Projeto não encontrado.');
     }
 
-    const filesToDelete: string[] = [];
-    if (project.coverImageUrl) filesToDelete.push(project.coverImageUrl);
-    if (project.bimModelUrl) filesToDelete.push(project.bimModelUrl);
-    if (project.oae) {
-      project.oae.forEach(o => filesToDelete.push(o.bimModelUrl));
-    }
-
-    for (const filename of filesToDelete) {
-      const filePath = path.join(uploadConfig.projectsDirectory, filename);
-      try {
-        await fs.unlink(filePath);
-      } catch (err) {
-        console.error(`Falha ao excluir o arquivo ${filename}:`, err);
-      }
-    }
-
-    // Exclui a pasta do projeto inteira para garantir que não fiquem órfãos
-    const projectPath = path.resolve(uploadConfig.projectsDirectory, projectId);
-    await fs.rm(projectPath, { recursive: true, force: true }).catch(() => {});
-
-    // Exclui a pasta de imagens processadas do projeto
-    const processedPath = path.resolve(uploadConfig.projectsDirectory, '..', 'processed_images', projectId);
-    await fs.rm(processedPath, { recursive: true, force: true }).catch(() => {});
+    // No Firebase Storage, podemos excluir uma "pasta" deletando todos os arquivos com o prefixo
+    await this.bucket.deleteFiles({
+      prefix: `projects/${projectId}/`
+    });
 
     await this.projectRepository.delete(projectId);
   }
@@ -466,13 +420,10 @@ class ProjectService {
     const updatedInspections = project.inspections?.filter(i => i.id !== inspectionId) || [];
     await this.projectRepository.update(projectId, { inspections: updatedInspections });
 
-    // Remove pasta física da inspeção (contém ortofotos)
-    const inspectionPath = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId);
-    await fs.rm(inspectionPath, { recursive: true, force: true }).catch(() => {});
-
-    // Remove pasta de imagens processadas da inspeção
-    const processedPath = path.resolve(uploadConfig.projectsDirectory, '..', 'processed_images', projectId, inspectionId);
-    await fs.rm(processedPath, { recursive: true, force: true }).catch(() => {});
+    // Remove arquivos da inspeção no Storage
+    await this.bucket.deleteFiles({
+      prefix: `projects/${projectId}/inspections/${inspectionId}/`
+    });
   }
 
   public async deleteImageFromInspection(projectId: string, inspectionId: string, imageName: string): Promise<void> {
@@ -482,11 +433,8 @@ class ProjectService {
     const inspection = project.inspections?.find(i => i.id === inspectionId);
     if (!inspection) throw new Error('Inspeção não encontrada.');
 
-    // Encontra a imagem para saber a URL e apagar o arquivo
-    const imageToDelete = inspection.images.find(img => path.basename(img.url) === imageName);
-    
     // Filtra o array
-    const updatedImages = inspection.images.filter(img => path.basename(img.url) !== imageName);
+    const updatedImages = inspection.images.filter(img => !img.url.includes(imageName));
     
     const updatedInspections = project.inspections?.map(i => {
       if (i.id === inspectionId) {
@@ -497,11 +445,9 @@ class ProjectService {
 
     await this.projectRepository.update(projectId, { inspections: updatedInspections });
 
-    // Apaga o arquivo físico
-    if (imageToDelete) {
-      const filePath = path.resolve(uploadConfig.projectsDirectory, '..', 'processed_images', projectId, inspectionId, imageName);
-      await fs.unlink(filePath).catch(() => {});
-    }
+    // Apaga o arquivo no Storage
+    const storagePath = `projects/${projectId}/inspections/${inspectionId}/images/${imageName}`;
+    await this.bucket.file(storagePath).delete().catch(() => {});
   }
 
   public async deleteOrthoFromInspection(projectId: string, inspectionId: string, orthoName: string): Promise<void> {
@@ -511,10 +457,8 @@ class ProjectService {
     const inspection = project.inspections?.find(i => i.id === inspectionId);
     if (!inspection || !inspection.orthoResults) throw new Error('Inspeção ou resultados não encontrados.');
 
-    const orthoResult = inspection.orthoResults.find(o => path.basename(o.url) === orthoName);
-    
     // Filtra o array
-    const updatedOrthoResults = inspection.orthoResults.filter(o => path.basename(o.url) !== orthoName);
+    const updatedOrthoResults = inspection.orthoResults.filter(o => !o.url.includes(orthoName));
     
     const updatedInspections = project.inspections?.map(i => {
       if (i.id === inspectionId) {
@@ -526,16 +470,13 @@ class ProjectService {
     await this.projectRepository.update(projectId, { inspections: updatedInspections });
 
     // Apaga os arquivos físicos (GeoTIFF e Preview)
-    if (orthoResult) {
-      const orthoPath = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId, orthoName);
-      await fs.unlink(orthoPath).catch(() => {});
-      
-      if (orthoResult.previewUrl) {
-        const previewName = path.basename(orthoResult.previewUrl);
-        const previewPath = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId, previewName);
-        await fs.unlink(previewPath).catch(() => {});
-      }
-    }
+    const storagePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${orthoName}`;
+    await this.bucket.file(storagePath).delete().catch(() => {});
+    
+    // Opcional: apagar o preview se estiver seguindo um padrão de nome
+    const previewName = orthoName.replace('_annotated', '_preview').replace(/\..+$/, '.jpg');
+    const previewPath = `projects/${projectId}/inspections/${inspectionId}/ortho/${previewName}`;
+    await this.bucket.file(previewPath).delete().catch(() => {});
   }
 }
 

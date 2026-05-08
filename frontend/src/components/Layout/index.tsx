@@ -11,8 +11,6 @@ import { FaUserCircle, FaSignOutAlt, FaKey, FaUser } from 'react-icons/fa';
 import './style.css';
 import logoSite from '../../assets/images/logo_site (1).png';
 
-const API_URL = 'http://localhost:3001';
-
 const Layout: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme } = useContext(ThemeContext);
@@ -67,7 +65,7 @@ const Layout: React.FC = () => {
                   <Dropdown.Toggle as="div" id="dropdown-user" className="avatar-dropdown-toggle cursor-pointer ms-3" style={{ cursor: 'pointer' }}>
                     {user.avatarUrl ? (
                       <Image
-                        src={`${API_URL}/files/${user.avatarUrl}`}
+                        src={user.avatarUrl}
                         roundedCircle
                         className="navbar-avatar"
                       />

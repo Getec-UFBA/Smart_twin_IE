@@ -1,40 +1,31 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { auth } from '../config/firebase';
 import UserRepository from '../repositories/UserRepository';
 import { IUser } from '../models/IUser';
 
-interface IAuthRequest {
-  email: string;
-  password: string;
+interface IVerifyRequest {
+  idToken: string;
 }
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
-const JWT_EXPIRES_IN = '1d';
 
 class AuthService {
   private userRepository = new UserRepository();
 
-  public async login({ email, password }: IAuthRequest): Promise<{ token: string; user: Omit<IUser, 'password'> }> {
-    const user = await this.userRepository.findByEmail(email);
+  /**
+   * O login agora é feito no Frontend. 
+   * Este serviço serve para validar o token enviado pelo frontend e retornar os dados do perfil do Firestore.
+   */
+  public async verifyToken({ idToken }: IVerifyRequest): Promise<{ user: IUser }> {
+    try {
+      const decodedToken = await auth.verifyIdToken(idToken);
+      const user = await this.userRepository.findById(decodedToken.uid);
 
-    // Garante que o usuário existe e tem uma senha cadastrada
-    if (!user || !user.password) {
-      throw new Error('Credenciais inválidas ou cadastro não finalizado.');
+      if (!user) {
+        throw new Error('Perfil de usuário não encontrado.');
+      }
+
+      return { user };
+    } catch (error) {
+      throw new Error('Token inválido ou expirado.');
     }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      throw new Error('Credenciais inválidas ou cadastro não finalizado.');
-    }
-
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
-
-    const { password: _, ...userWithoutPassword } = user;
-
-    return { token, user: userWithoutPassword };
   }
 }
 

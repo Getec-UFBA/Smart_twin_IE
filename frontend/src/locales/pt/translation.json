@@ -4,7 +4,8 @@
     "home": "Home",
     "projects": "Projetos",
     "administration": "Administração",
-    "register_user": "Cadastrar Usuário"
+    "register_user": "Cadastrar Usuário",
+    "admin_dashboard": "Painel Admin"
   },
   "navbar": {
     "profile": "Perfil",
@@ -267,6 +268,36 @@
     "loading": "Carregando...",
     "project_not_found": "Projeto não encontrado.",
     "error_loading": "Erro ao carregar os dados do projeto."
+  },
+  "maintenance_feedback": {
+    "title": "Controle de Patologias e Manutenção",
+    "inspection": "Inspeção",
+    "date": "Data",
+    "resolved_types": "{{count}} Tipos Resolvidos",
+    "pending_types": "{{count}} Tipos Pendentes",
+    "table_pathology": "Patologia / Classe",
+    "table_occurrences": "Ocorrências",
+    "table_status": "Status Atual",
+    "table_last_correction": "Última Correção",
+    "table_actions": "Ações de Gestão",
+    "no_pathologies": "Nenhuma patologia identificada para controle.",
+    "instances": "{{count}} instâncias",
+    "status_resolved": "Corrigido",
+    "status_pending": "Pendente",
+    "by": "por",
+    "btn_reopen": "Reabrir Classe",
+    "btn_resolve_all": "Resolver Tudo",
+    "modal_resolve_title": "Registrar Correção em Massa",
+    "selected_pathology": "Patologia Selecionada",
+    "modal_resolve_desc": "Isto marcará as <strong>{{count}} ocorrências</strong> desta patologia como resolvidas.",
+    "label_correction_date": "Data da Correção",
+    "label_responsible": "Responsável Técnico",
+    "placeholder_responsible": "Nome do engenheiro/técnico",
+    "label_notes": "Notas de Execução",
+    "placeholder_notes": "Descreva detalhadamente a técnica corretiva utilizada e materiais aplicados...",
+    "btn_cancel": "Cancelar",
+    "btn_confirm_resolve": "Confirmar e Resolver Todas",
+    "processing": "Processando..."
   },
   "footer": {
     "description": "Plataforma inteligente para inspeção de patologias e gestão de gêmeos digitais na engenharia civil.",

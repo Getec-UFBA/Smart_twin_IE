@@ -96,17 +96,9 @@ projectRouter.get(
   projectController.generateInspectionPdfReport
 );
 
-// Define os campos que o multer deve esperar
-const uploadFields = [
-  { name: 'coverImage', maxCount: 1 },
-  { name: 'bimModel', maxCount: 1 },
-  { name: 'oaeBimModel[]', maxCount: 30 }
-];
-
 projectRouter.post(
   '/',
   authorizeRole(['admin']),
-  upload.fields(uploadFields),
   projectController.create
 );
 

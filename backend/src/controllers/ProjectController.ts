@@ -231,31 +231,39 @@ class ProjectController {
 
     const imageProcessingService = new ImageProcessingService();
     const projectService = new ProjectService();
+    // @ts-ignore - Acesso direto para simplificar o upload
+    const bucket = projectService.bucket;
 
     try {
       // 1. Processa no serviço de IA
       const { detections, annotated_ortho_url, preview_url } = await imageProcessingService.processOrtho(file.path);
       
       const requestUuid = randomUUID();
-      const finalDir = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId);
-      await fs.mkdir(finalDir, { recursive: true });
 
-      // 2. Baixa o GeoTIFF anotado e salva
+      // 2. Baixa o GeoTIFF anotado e salva no Firebase
       const annotatedBuffer = await imageProcessingService.downloadFile(annotated_ortho_url);
       const finalOrthoName = `${requestUuid}_annotated${path.extname(file.originalname)}`;
-      const finalOrthoPath = path.join(finalDir, finalOrthoName);
-      await fs.writeFile(finalOrthoPath, annotatedBuffer);
+      const orthoStoragePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${finalOrthoName}`;
+      
+      await bucket.file(orthoStoragePath).save(annotatedBuffer, {
+        metadata: { contentType: 'image/tiff' },
+        public: true
+      });
 
-      // 3. Baixa a imagem de pré-visualização e salva
+      // 3. Baixa a imagem de pré-visualização e salva no Firebase
       const previewBuffer = await imageProcessingService.downloadFile(preview_url);
       const finalPreviewName = `${requestUuid}_preview.jpg`;
-      const finalPreviewPath = path.join(finalDir, finalPreviewName);
-      await fs.writeFile(finalPreviewPath, previewBuffer);
+      const previewStoragePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${finalPreviewName}`;
+      
+      await bucket.file(previewStoragePath).save(previewBuffer, {
+        metadata: { contentType: 'image/jpeg' },
+        public: true
+      });
 
       const orthoResult = {
-        url: `/files/projects/${projectId}/${inspectionId}/${finalOrthoName}`,
-        previewUrl: `/files/projects/${projectId}/${inspectionId}/${finalPreviewName}`,
-        detections: detections,
+        url: `https://storage.googleapis.com/${bucket.name}/${orthoStoragePath}`,
+        previewUrl: `https://storage.googleapis.com/${bucket.name}/${previewStoragePath}`,
+        detections: detections.map((d: any) => ({ ...d, id: randomUUID() })),
       };
 
       await projectService.addOrthoResultsToInspection({
@@ -286,7 +294,7 @@ class ProjectController {
       const processedImageResponse = await imageProcessingService.processImage(imagePath);
       return {
         processedImageBase64: processedImageResponse.processed_image_base64,
-        detections: processedImageResponse.detections,
+        detections: processedImageResponse.detections.map((d: any) => ({ ...d, id: randomUUID() })),
       };
     } catch (error) {
       console.error(`Error in getProcessedImageData for ${imagePath}:`, error);
@@ -303,6 +311,9 @@ class ProjectController {
       responsible, 
       modules, 
       oaeData,
+      coverImageUrl,
+      bimModelUrl,
+      oaeBimModelUrls,
       buildingYear,
       builtArea,
       facadeTypology,
@@ -310,12 +321,6 @@ class ProjectController {
       buildingAcronym,
       unitDirector
     } = req.body;
-    
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const allFiles = Object.values(files).flat().map(file => ({
-      fieldname: file.fieldname,
-      filename: file.filename
-    }));
     
     if (!userId) {
       return res.status(400).json({ error: 'ID do usuário não encontrado no token.' });
@@ -332,7 +337,9 @@ class ProjectController {
         responsible,
         modules,
         oaeData,
-        files: allFiles,
+        coverImageUrl,
+        bimModelUrl,
+        oaeBimModelUrls,
         buildingYear,
         builtArea,
         facadeTypology,

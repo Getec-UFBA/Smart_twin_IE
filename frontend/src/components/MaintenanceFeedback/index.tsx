@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Table, Form, Button, Badge, Row, Col } from 'react-bootstrap';
-import { FaCheck, FaTools, FaUndo, FaCircle, FaUser, FaCalendarAlt, FaCommentAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCheck, FaTools, FaUndo, FaUser, FaCalendarAlt, FaCommentAlt, FaExclamationTriangle } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import type { IDetection, IGeoDetection, IInspection } from '../../models/IProject';
@@ -125,7 +125,7 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
             <div className="bg-success-soft p-2 rounded-3">
               <FaTools className="text-success" size={18} />
             </div>
-            {t('project_view.maintenance_feedback_title', 'Controle de Patologias e Manutenção')}
+            {t('maintenance_feedback.title', 'Controle de Patologias e Manutenção')}
           </Modal.Title>
         </Modal.Header>
         
@@ -133,20 +133,20 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
           <div className="inspection-summary-bar mb-4">
             <div className="d-flex align-items-center gap-4 py-2 px-3 bg-faint rounded-3 border shadow-sm">
               <div>
-                <label className="label-tiny">Inspeção</label>
+                <label className="label-tiny">{t('maintenance_feedback.inspection', 'Inspeção')}</label>
                 <div className="fw-semibold small">{inspection.inspectionObjective}</div>
               </div>
               <div className="vr opacity-10"></div>
               <div>
-                <label className="label-tiny">Data</label>
+                <label className="label-tiny">{t('maintenance_feedback.date', 'Data')}</label>
                 <div className="fw-semibold small">{inspection.inspectionDate}</div>
               </div>
               <div className="ms-auto d-flex gap-2">
                 <Badge bg="success-soft" className="text-success border border-success border-opacity-10 px-3 py-2">
-                  {groupedDetections.filter(d => d.status === 'resolved').length} Tipos Resolvidos
+                  {t('maintenance_feedback.resolved_types', { count: groupedDetections.filter(d => d.status === 'resolved').length })}
                 </Badge>
                 <Badge bg="warning-soft" className="text-warning border border-warning border-opacity-10 px-3 py-2">
-                  {groupedDetections.filter(d => d.status !== 'resolved').length} Tipos Pendentes
+                  {t('maintenance_feedback.pending_types', { count: groupedDetections.filter(d => d.status !== 'resolved').length })}
                 </Badge>
               </div>
             </div>
@@ -156,11 +156,11 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
             <Table borderless hover className="align-middle mb-0">
               <thead className="bg-light">
                 <tr className="border-bottom">
-                  <th className="text-muted small fw-bold text-uppercase py-3 ps-4">Patologia / Classe</th>
-                  <th className="text-muted small fw-bold text-uppercase py-3">Ocorrências</th>
-                  <th className="text-muted small fw-bold text-uppercase py-3">Status Atual</th>
-                  <th className="text-muted small fw-bold text-uppercase py-3">Última Correção</th>
-                  <th className="text-muted small fw-bold text-uppercase py-3 text-center">Ações de Gestão</th>
+                  <th className="text-muted small fw-bold text-uppercase py-3 ps-4">{t('maintenance_feedback.table_pathology', 'Patologia / Classe')}</th>
+                  <th className="text-muted small fw-bold text-uppercase py-3">{t('maintenance_feedback.table_occurrences', 'Ocorrências')}</th>
+                  <th className="text-muted small fw-bold text-uppercase py-3">{t('maintenance_feedback.table_status', 'Status Atual')}</th>
+                  <th className="text-muted small fw-bold text-uppercase py-3">{t('maintenance_feedback.table_last_correction', 'Última Correção')}</th>
+                  <th className="text-muted small fw-bold text-uppercase py-3 text-center">{t('maintenance_feedback.table_actions', 'Ações de Gestão')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -168,7 +168,7 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
                   <tr>
                     <td colSpan={5} className="text-center py-5 text-muted opacity-50">
                       <FaExclamationTriangle size={24} className="mb-2 d-block mx-auto" />
-                      Nenhuma patologia identificada para controle.
+                      {t('maintenance_feedback.no_pathologies', 'Nenhuma patologia identificada para controle.')}
                     </td>
                   </tr>
                 ) : (
@@ -182,19 +182,19 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
                       </td>
                       <td>
                         <Badge bg="secondary-soft" className="text-secondary border fw-bold">
-                          {group.count} instâncias
+                          {t('maintenance_feedback.instances', { count: group.count })}
                         </Badge>
                       </td>
                       <td>
                         <Badge bg={group.status === 'resolved' ? 'success' : 'warning-soft'} className={group.status === 'resolved' ? 'px-3' : 'text-warning px-3'}>
-                          {group.status === 'resolved' ? 'Corrigido' : 'Pendente'}
+                          {group.status === 'resolved' ? t('maintenance_feedback.status_resolved', 'Corrigido') : t('maintenance_feedback.status_pending', 'Pendente')}
                         </Badge>
                       </td>
                       <td className="small text-muted font-monospace">
                         {group.status === 'resolved' ? (
                           <div>
                             <div className="fw-bold text-dark">{group.maintenanceAt}</div>
-                            <div className="x-small">por {group.maintenanceResponsible}</div>
+                            <div className="x-small">{t('maintenance_feedback.by', 'por')} {group.maintenanceResponsible}</div>
                           </div>
                         ) : '---'}
                       </td>
@@ -206,7 +206,7 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
                           disabled={updatingClass === group.className}
                           onClick={() => handleToggleStatus(group)}
                         >
-                          {group.status === 'resolved' ? <><FaUndo size={10} className="me-1" /> Reabrir Classe</> : <><FaCheck size={10} className="me-1" /> Resolver Tudo</>}
+                          {group.status === 'resolved' ? <><FaUndo size={10} className="me-1" /> {t('maintenance_feedback.btn_reopen', 'Reabrir Classe')}</> : <><FaCheck size={10} className="me-1" /> {t('maintenance_feedback.btn_resolve_all', 'Resolver Tudo')}</>}
                         </Button>
                       </td>
                     </tr>
@@ -221,20 +221,20 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
       {/* MODAL PROFISSIONAL DE RESOLUÇÃO */}
       <Modal show={!!showResolveModal} onHide={() => setShowResolveModal(null)} centered className="resolve-details-modal">
         <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title className="h6 fw-bold">Registrar Correção em Massa</Modal.Title>
+          <Modal.Title className="h6 fw-bold">{t('maintenance_feedback.modal_resolve_title', 'Registrar Correção em Massa')}</Modal.Title>
         </Modal.Header>
         <Modal.Body className="px-4 pb-4">
           <div className="mb-4 selected-pathology-box shadow-sm">
-            <div className="text-success small fw-bold text-uppercase mb-1">Patologia Selecionada</div>
+            <div className="text-success small fw-bold text-uppercase mb-1">{t('maintenance_feedback.selected_pathology', 'Patologia Selecionada')}</div>
             <div className="pathology-name text-capitalize">{showResolveModal?.className.replace(/_/g, ' ')}</div>
-            <div className="text-muted small mt-2">Isto marcará as <strong>{showResolveModal?.count} ocorrências</strong> desta patologia como resolvidas.</div>
+            <div className="text-muted small mt-2" dangerouslySetInnerHTML={{ __html: t('maintenance_feedback.modal_resolve_desc', { count: showResolveModal?.count }) }}></div>
           </div>
           
           <Form>
             <Row className="g-3">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="label-tiny-dark"><FaCalendarAlt className="me-1" /> Data da Correção</Form.Label>
+                  <Form.Label className="label-tiny-dark"><FaCalendarAlt className="me-1" /> {t('maintenance_feedback.label_correction_date', 'Data da Correção')}</Form.Label>
                   <Form.Control 
                     type="date" 
                     className="modern-input"
@@ -245,11 +245,11 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
               </Col>
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label className="label-tiny-dark"><FaUser className="me-1" /> Responsável Técnico</Form.Label>
+                  <Form.Label className="label-tiny-dark"><FaUser className="me-1" /> {t('maintenance_feedback.label_responsible', 'Responsável Técnico')}</Form.Label>
                   <Form.Control 
                     type="text" 
                     className="modern-input"
-                    placeholder="Nome do engenheiro/técnico"
+                    placeholder={t('maintenance_feedback.placeholder_responsible', 'Nome do engenheiro/técnico')}
                     value={resolveForm.maintenanceResponsible}
                     onChange={e => setResolveForm({...resolveForm, maintenanceResponsible: e.target.value})}
                   />
@@ -257,12 +257,12 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
               </Col>
               <Col md={12}>
                 <Form.Group>
-                  <Form.Label className="label-tiny-dark"><FaCommentAlt className="me-1" /> Notas de Execução</Form.Label>
+                  <Form.Label className="label-tiny-dark"><FaCommentAlt className="me-1" /> {t('maintenance_feedback.label_notes', 'Notas de Execução')}</Form.Label>
                   <Form.Control 
                     as="textarea" 
                     rows={4} 
                     className="modern-input"
-                    placeholder="Descreva detalhadamente a técnica corretiva utilizada e materiais aplicados..."
+                    placeholder={t('maintenance_feedback.placeholder_notes', 'Descreva detalhadamente a técnica corretiva utilizada e materiais aplicados...')}
                     value={resolveForm.maintenanceNotes}
                     onChange={e => setResolveForm({...resolveForm, maintenanceNotes: e.target.value})}
                   />
@@ -272,9 +272,9 @@ const MaintenanceFeedback: React.FC<MaintenanceFeedbackProps> = ({
           </Form>
         </Modal.Body>
         <Modal.Footer className="border-0 px-4 pb-4">
-          <Button variant="link" className="text-muted text-decoration-none fw-bold" onClick={() => setShowResolveModal(null)}>Cancelar</Button>
+          <Button variant="link" className="text-muted text-decoration-none fw-bold" onClick={() => setShowResolveModal(null)}>{t('maintenance_feedback.btn_cancel', 'Cancelar')}</Button>
           <Button variant="success" className="px-4 fw-bold shadow-sm" onClick={submitResolution} disabled={updatingClass !== null}>
-            {updatingClass ? 'Processando...' : 'Confirmar e Resolver Todas'}
+            {updatingClass ? t('maintenance_feedback.processing', 'Processando...') : t('maintenance_feedback.btn_confirm_resolve', 'Confirmar e Resolver Todas')}
           </Button>
         </Modal.Footer>
       </Modal>

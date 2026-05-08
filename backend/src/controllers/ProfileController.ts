@@ -33,27 +33,38 @@ class ProfileController {
       return res.status(400).json({ error: 'ID do usuário não encontrado no token.' });
     }
 
-    const updateProfile = new UpdateProfileService();
-    const updatedUser = await updateProfile.execute({ userId, name, company, bio });
+    try {
+      const updateProfile = new UpdateProfileService();
+      const updatedUser = await updateProfile.execute({ userId, name, company, bio });
 
-    return res.json(updatedUser);
+      return res.json(updatedUser);
+    } catch (error: any) {
+      console.error('Erro ao atualizar perfil:', error);
+      return res.status(400).json({ error: error.message || 'Erro interno ao atualizar perfil.' });
+    }
   }
 
   // PATCH /profile/avatar
   public async updateAvatar(req: AuthRequest, res: Response): Promise<Response> {
     const userId = req.userId;
+    const { avatarUrl } = req.body;
 
-    if (!userId || !req.file) {
-      return res.status(400).json({ error: 'ID do usuário ou arquivo não encontrado.' });
+    if (!userId || !avatarUrl) {
+      return res.status(400).json({ error: 'ID do usuário ou URL do avatar não encontrado.' });
     }
 
-    const updateAvatar = new UpdateAvatarService();
-    const updatedUser = await updateAvatar.execute({
-      userId,
-      avatarFilename: req.file.filename,
-    });
+    try {
+      const updateAvatar = new UpdateAvatarService();
+      const updatedUser = await updateAvatar.execute({
+        userId,
+        avatarUrl,
+      });
 
-    return res.json(updatedUser);
+      return res.json(updatedUser);
+    } catch (error: any) {
+      console.error('Erro ao atualizar avatar:', error);
+      return res.status(400).json({ error: error.message || 'Erro interno ao atualizar avatar.' });
+    }
   }
 }
 

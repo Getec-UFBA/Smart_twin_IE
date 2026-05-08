@@ -1,16 +1,14 @@
 import { Router } from 'express';
 import UserController from '../controllers/UserController';
-import CompleteRegistrationController from '../controllers/CompleteRegistrationController';
 import { authenticateToken, authorizeRole } from '../middlewares/auth';
 
-const userRouter = Router();
-const userController = new UserController();
-const completeRegistrationController = new CompleteRegistrationController();
+const userRoutes = Router();
 
-// Rota para o admin pré-cadastrar um usuário (email + role)
-userRouter.post('/pre-register', authenticateToken, authorizeRole(['admin']), userController.preRegisterUser);
+// Rota pública para finalizar o cadastro (chamada pelo frontend após o Firebase Auth)
+userRoutes.post('/', UserController.create);
 
-// Rota pública para um usuário finalizar seu cadastro definindo uma senha
-userRouter.post('/complete-registration', completeRegistrationController.handle);
+// Rota protegida: Apenas Admin pode autorizar novos e-mails
+userRoutes.post('/authorize', authenticateToken, authorizeRole(['admin']), UserController.authorize);
+userRoutes.get('/authorized', authenticateToken, authorizeRole(['admin']), UserController.listAuthorized);
 
-export default userRouter;
+export default userRoutes;

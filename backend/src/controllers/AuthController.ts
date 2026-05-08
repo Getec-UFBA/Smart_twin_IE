@@ -2,18 +2,19 @@ import { Request, Response } from 'express';
 import AuthService from '../services/AuthService';
 
 class AuthController {
+  /**
+   * O Frontend faz o login e pode opcionalmente chamar esta rota 
+   * para validar o token e pegar os dados completos do perfil do Firestore.
+   */
   public async login(req: Request, res: Response): Promise<Response> {
-    const { email, password } = req.body;
+    const { token } = req.body; // O frontend envia o ID Token do Firebase
     const authService = new AuthService();
 
     try {
-      const { token, user } = await authService.login({ email, password });
+      const { user } = await authService.verifyToken({ idToken: token });
       return res.json({ token, user });
-    } catch (error) {
-      if (error instanceof Error) {
-        return res.status(401).json({ error: error.message });
-      }
-      return res.status(500).json({ error: 'Internal server error' });
+    } catch (error: any) {
+      return res.status(401).json({ error: error.message });
     }
   }
 }

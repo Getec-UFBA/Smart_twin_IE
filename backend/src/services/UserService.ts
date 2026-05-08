@@ -1,31 +1,54 @@
-import { v4 as uuidv4 } from 'uuid';
-import UserRepository from '../repositories/UserRepository';
+import { auth as firebaseAuth, db } from '../config/firebase';
 import { IUser } from '../models/IUser';
-
-interface IPreRegisterUserRequest {
-  email: string;
-  role: 'admin' | 'user';
-}
+import UserRepository from '../repositories/UserRepository';
 
 class UserService {
-  private userRepository = new UserRepository();
+  private userRepository: UserRepository;
 
-  public async preRegisterUser({ email, role }: IPreRegisterUserRequest): Promise<Omit<IUser, 'password'>> {
-    const existingUser = await this.userRepository.findByEmail(email);
+  constructor() {
+    this.userRepository = new UserRepository();
+  }
 
-    if (existingUser) {
-      throw new Error('Usuário com este email já existe.');
+  public async isEmailAuthorized(email: string): Promise<boolean> {
+    const doc = await db.collection('authorized_emails').doc(email.toLowerCase()).get();
+    return doc.exists;
+  }
+
+  public async registerUser(userData: IUser): Promise<IUser> {
+    const authDoc = await db.collection('authorized_emails').doc(userData.email.toLowerCase()).get();
+    
+    if (!authDoc.exists) {
+      throw new Error('Este e-mail não está autorizado para cadastro.');
     }
 
-    const newUser: IUser = {
-      id: uuidv4(),
-      email,
-      role,
-    };
+    const authData = authDoc.data();
+    // Aplica a role que foi pré-definida pelo admin
+    userData.role = authData?.role || 'user';
+    userData.createdAt = new Date();
 
-    const createdUser = await this.userRepository.saveUser(newUser);
-    const { password: _, ...userWithoutPassword } = createdUser;
-    return userWithoutPassword;
+    const user = await this.userRepository.saveUser(userData);
+    
+    // Atualiza o status na coleção de autorizados para concluído
+    await authDoc.ref.update({ 
+      status: 'registered', 
+      registeredAt: new Date(),
+      uid: userData.id 
+    });
+    
+    return user;
+  }
+
+  public async authorizeEmail(email: string, role: 'admin' | 'user' = 'user'): Promise<void> {
+    await db.collection('authorized_emails').doc(email.toLowerCase()).set({
+      authorizedAt: new Date(),
+      status: 'pending',
+      role: role
+    });
+  }
+
+  public async listAuthorizedEmails(): Promise<any[]> {
+    const snapshot = await db.collection('authorized_emails').get();
+    return snapshot.docs.map(doc => ({ email: doc.id, ...doc.data() }));
   }
 }
 

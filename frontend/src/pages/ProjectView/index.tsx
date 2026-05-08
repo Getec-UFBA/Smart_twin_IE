@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { Row, Col, Card, Button, Form, Modal, Alert, Badge, ProgressBar } from 'react-bootstrap';
@@ -17,7 +17,6 @@ import MaintenanceFeedback from '../../components/MaintenanceFeedback';
 const ProjectView: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [project, setProject] = useState<IProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -52,21 +51,30 @@ const ProjectView: React.FC = () => {
       const response = await api.get(`/projects/${id}`);
       const data = response.data;
       setProject(data);
-      
-      if (activeInspection) {
-        const updated = data.inspections?.find((i: IInspection) => i.id === activeInspection.id);
-        if (updated) setActiveInspection(updated);
-      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [id, activeInspection]);
+  }, [id]);
 
   useEffect(() => {
     if (id) fetchProject();
   }, [id, fetchProject]);
+
+  // Sincroniza os dados da inspeção ativa quando o projeto é atualizado (ex: após processar imagens)
+  useEffect(() => {
+    if (project && activeInspection) {
+      const updated = project.inspections?.find((i: IInspection) => i.id === activeInspection.id);
+      if (updated) {
+        // Só atualiza se houver mudança real nos dados (comparação simples de arrays para evitar loops)
+        if (updated.images.length !== activeInspection.images.length || 
+            (updated.orthoResults?.length || 0) !== (activeInspection.orthoResults?.length || 0)) {
+          setActiveInspection(updated);
+        }
+      }
+    }
+  }, [project, activeInspection]);
 
   // Navegação por teclado
   useEffect(() => {
@@ -270,7 +278,7 @@ const ProjectView: React.FC = () => {
             <div className="inspection-icon"><FaChartLine /></div>
             <div className="inspection-info">
               <h6>{t('project_view.overview')}</h6>
-              <span>{t('project_view.project_stats')}</span>
+              <span>Dashboard do Projeto</span>
             </div>
           </div>
 
@@ -395,7 +403,7 @@ const ProjectView: React.FC = () => {
                               style={{ cursor: 'pointer', height: '100%', minHeight: '200px', background: 'var(--bg-main)' }}
                             >
                               <img 
-                                src={`http://localhost:3001${ortho.previewUrl}`} 
+                                src={ortho.previewUrl} 
                                 className="w-100 h-100 object-fit-cover" 
                                 alt="Preview" 
                               />
@@ -408,7 +416,7 @@ const ProjectView: React.FC = () => {
                                 {t('project_view.anomalies_detected', { count: ortho.detections.length })}
                               </div>
                               <div className="d-flex gap-2">
-                                <Button size="sm" variant="primary" onClick={() => window.open(`http://localhost:3001${ortho.url}`)}>
+                                <Button size="sm" variant="primary" onClick={() => window.open(ortho.url)}>
                                   <FaDownload className="me-1" /> {t('project_view.download_tiff')}
                                 </Button>
                               </div>
@@ -432,7 +440,7 @@ const ProjectView: React.FC = () => {
                   {activeInspection.images.map((img, idx) => (
                     <img 
                       key={idx}
-                      src={`http://localhost:3001${img.url}`} 
+                      src={img.url} 
                       className="result-card-img"
                       alt={`Defeito ${idx}`}
                       onClick={() => setExpandedImageIndex(idx)}
@@ -595,7 +603,7 @@ const ProjectView: React.FC = () => {
               </button>
 
               <img 
-                src={`http://localhost:3001${activeInspection.images[expandedImageIndex].url}`} 
+                src={activeInspection.images[expandedImageIndex].url} 
                 style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} 
                 alt="Fullscreen" 
               />
