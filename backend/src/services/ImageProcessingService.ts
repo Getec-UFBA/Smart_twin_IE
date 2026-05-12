@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { Readable } from 'stream';
 import FormData from 'form-data';
+import sharp from 'sharp';
+import fs from 'fs/promises';
+import path from 'path';
 
 interface IDetection {
   class_name: string;
@@ -49,23 +52,68 @@ class ImageProcessingService {
     }
   }
 
-  public async processImage(imagePath: string): Promise<IProcessImageResponse> {
+  private async resizeImageIfNeeded(imagePath: string): Promise<string> {
+    const optimizedPath = `${imagePath}_optimized.jpg`;
     try {
+      const image = sharp(imagePath);
+      const metadata = await image.metadata();
+
+      if (metadata.width && metadata.width > 1600) { // Reduzi um pouco mais para garantir estabilidade
+        console.log(`[ImageProcessingService] Redimensionando imagem de ${metadata.width}px para 1600px`);
+        await image
+          .resize(1600, null, { withoutEnlargement: true })
+          .jpeg({ quality: 75 }) // Reduzi qualidade para 75%
+          .toFile(optimizedPath);
+        return optimizedPath;
+      }
+      
+      return imagePath;
+    } catch (error) {
+      console.error('[ImageProcessingService] Erro ao otimizar imagem:', error);
+      return imagePath;
+    }
+  }
+
+  public async processImage(imagePath: string, retryCount = 0): Promise<IProcessImageResponse> {
+    const MAX_RETRIES = 2;
+    let currentImagePath = imagePath;
+    let isOptimized = false;
+
+    try {
+      if (retryCount === 0) {
+        const resizedPath = await this.resizeImageIfNeeded(imagePath);
+        if (resizedPath !== imagePath) {
+          currentImagePath = resizedPath;
+          isOptimized = true;
+        }
+      }
+
       const formData = new FormData();
-      formData.append('file', require('fs').createReadStream(imagePath), {
-        filename: require('path').basename(imagePath),
+      formData.append('file', require('fs').createReadStream(currentImagePath), {
+        filename: path.basename(currentImagePath),
       });
 
       const response = await axios.post<IProcessImageResponse>(`${this.pythonServiceUrl}/process-image/`, formData, {
         headers: {
           ...formData.getHeaders(),
         },
+        timeout: 120000, // Aumentado para 120 segundos (2 minutos)
       });
 
       return response.data;
     } catch (error) {
+      if (axios.isAxiosError(error) && (error.response?.status === 503 || error.code === 'ECONNABORTED') && retryCount < MAX_RETRIES) {
+        console.warn(`[ImageProcessingService] IA Service instável (Status ${error.response?.status}). Tentativa ${retryCount + 1}/${MAX_RETRIES}...`);
+        await new Promise(resolve => setTimeout(resolve, 3000 * (retryCount + 1))); // Aumentado o delay entre retentativas
+        return this.processImage(imagePath, retryCount + 1);
+      }
+
       console.error('Error processing image with Python service:', error);
       throw new Error('Failed to process image with Python service.');
+    } finally {
+      if (isOptimized && currentImagePath !== imagePath) {
+        await fs.unlink(currentImagePath).catch(() => {});
+      }
     }
   }
 
@@ -82,6 +130,7 @@ class ImageProcessingService {
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
+        timeout: 600000, // 10 minutos para ortomosaicos
       });
 
       return response.data;

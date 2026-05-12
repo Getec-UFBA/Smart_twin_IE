@@ -171,39 +171,79 @@ const ProjectView: React.FC = () => {
     setProgress(0);
     setProgressStatus(t('project_view.progress_starting'));
     
-    const formData = new FormData();
     try {
-      const config = {
-        onUploadProgress: (progressEvent: any) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setProgress(percentCompleted * 0.4); 
-          if (percentCompleted === 100) {
-            setProgressStatus(t('project_view.progress_ai'));
-            startFakeProgress(40, 98, 1500);
-          } else {
-            setProgressStatus(t('project_view.progress_uploading', { percent: percentCompleted }));
+      if (processingType === 'images') {
+        let successCount = 0;
+        let failCount = 0;
+        const totalFiles = selectedFiles.length;
+
+        for (let i = 0; i < totalFiles; i++) {
+          const file = selectedFiles[i];
+          const formData = new FormData();
+          formData.append('images', file);
+          formData.append('projectId', project.id);
+          formData.append('inspectionId', activeInspection.id);
+
+          setProgressStatus(`Processando imagem ${i + 1} de ${totalFiles}: ${file.name}`);
+          
+          try {
+            await api.post('/projects/process-images', formData, {
+              onUploadProgress: (progressEvent: any) => {
+                const filePercent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                const totalPercent = Math.round(((successCount + failCount) * 100 + (filePercent * 0.9)) / totalFiles);
+                setProgress(totalPercent);
+              }
+            });
+            successCount++;
+          } catch (err) {
+            console.error(`Falha ao processar ${file.name}:`, err);
+            failCount++;
+          }
+          
+          setProgress(Math.round(((successCount + failCount) * 100) / totalFiles));
+          
+          // Delay de 1.5s entre imagens para evitar sobrecarga na IA
+          if (i < totalFiles - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
           }
         }
-      };
 
-      if (processingType === 'images') {
-        selectedFiles.forEach(file => formData.append('images', file));
-        formData.append('projectId', project.id);
-        formData.append('inspectionId', activeInspection.id);
-        await api.post('/projects/process-images', formData, config);
-        setProgress(100);
-        setProgressStatus(t('project_view.progress_finished'));
-        setTimeout(() => {
-          setShowUploadModal(false);
-          fetchProject();
+        if (successCount > 0) {
+          setProgress(100);
+          setProgressStatus(t('project_view.progress_finished'));
+          setTimeout(() => {
+            setShowUploadModal(false);
+            fetchProject();
+            setProcessing(false);
+            setProgress(0);
+          }, 1500);
+        } else {
+          alert(t('project_view.error_process'));
           setProcessing(false);
           setProgress(0);
-        }, 1500);
+        }
+
       } else {
+        const formData = new FormData();
         formData.append('ortho', selectedFiles[0]);
         formData.append('projectId', project.id);
         formData.append('inspectionId', activeInspection.id);
-        await api.post('/projects/process-ortho', formData, { ...config, timeout: 0 });
+
+        const config = {
+          onUploadProgress: (progressEvent: any) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setProgress(percentCompleted * 0.4); 
+            if (percentCompleted === 100) {
+              setProgressStatus(t('project_view.progress_ai'));
+              startFakeProgress(40, 98, 1500);
+            } else {
+              setProgressStatus(t('project_view.progress_uploading', { percent: percentCompleted }));
+            }
+          },
+          timeout: 0
+        };
+
+        await api.post('/projects/process-ortho', formData, config);
         setProgress(100);
         setProgressStatus(t('project_view.progress_ortho_success'));
         setTimeout(() => {

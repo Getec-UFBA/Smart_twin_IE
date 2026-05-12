@@ -2,6 +2,7 @@ import ProjectRepository from '../repositories/ProjectRepository';
 import puppeteer from 'puppeteer';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { pathToFileURL } from 'url';
 import { IProject, IInspection, IDetection, IImage } from '../models/IProject';
 
@@ -22,37 +23,41 @@ class ReportService {
 
     const htmlContent = this.generateHtmlReport(project, inspectionId);
     
-    // Criar um arquivo temporário para o HTML
-    const tempDir = path.join(__dirname, '..', '..', 'tmp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
+    // No Firebase Functions, o único diretório gravável é o /tmp (os.tmpdir)
+    const tempDir = os.tmpdir();
     const tempFilePath = path.join(tempDir, `report_${projectId}_${Date.now()}.html`);
     fs.writeFileSync(tempFilePath, htmlContent);
 
-    console.log('[ReportService] HTML gerado e salvo em arquivo temporário, iniciando Puppeteer...');
+    console.log(`[ReportService] HTML salvo em ${tempFilePath}, iniciando Puppeteer...`);
 
+    // Configurações otimizadas para ambientes Serverless (Cloud Functions)
     const browser = await puppeteer.launch({
       headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--allow-file-access-from-files'
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process'
       ]
     });
 
     try {
       const page = await browser.newPage();
+      console.log('[ReportService] Nova página criada.');
       
-      await page.setDefaultNavigationTimeout(120000);
-      await page.setDefaultTimeout(120000);
+      // Aumentamos os timeouts para evitar erros de rede em PDFs pesados
+      await page.setDefaultNavigationTimeout(240000);
+      await page.setDefaultTimeout(240000);
 
-      console.log('[ReportService] Carregando arquivo HTML temporário no Puppeteer...');
       const fileUrl = pathToFileURL(tempFilePath).href;
+      console.log(`[ReportService] Carregando arquivo HTML de: ${fileUrl}`);
+      
       await page.goto(fileUrl, { 
-        waitUntil: 'networkidle0',
-        timeout: 120000 
+        waitUntil: 'networkidle2', // Mudado para networkidle2 para ser mais resiliente
+        timeout: 240000 
       });
 
       console.log('[ReportService] Gerando buffer do PDF...');
@@ -65,7 +70,7 @@ class ReportService {
           left: '10mm',
           right: '10mm',
         },
-        timeout: 120000,
+        timeout: 240000,
       });
 
       const pdfBuffer = Buffer.from(pdfBufferUint8Array);
@@ -73,17 +78,20 @@ class ReportService {
       console.log('[ReportService] PDF gerado com sucesso.');
       return pdfBuffer;
     } catch (error) {
-      console.error('[ReportService] Erro durante o processamento do Puppeteer:', error);
+      console.error('[ReportService] ERRO CRÍTICO NO PUPPETEER:', error);
+      if (error instanceof Error) {
+        console.error('[ReportService] Nome do erro:', error.name);
+        console.error('[ReportService] Mensagem do erro:', error.message);
+        console.error('[ReportService] Stack trace:', error.stack);
+      }
       throw error;
     } finally {
+      console.log('[ReportService] Fechando navegador...');
       await browser.close();
-      // Remover o arquivo temporário
       if (fs.existsSync(tempFilePath)) {
         try {
           fs.unlinkSync(tempFilePath);
-        } catch (unlinkError) {
-          console.error('[ReportService] Erro ao remover arquivo temporário:', unlinkError);
-        }
+        } catch (err) {}
       }
     }
   }
@@ -103,7 +111,6 @@ class ReportService {
     const inspectionsToReport = targetInspection ? [targetInspection] : (project.inspections || []);
 
     inspectionsToReport.forEach(inspection => {
-        // Detecções em imagens comuns
         inspection.images.forEach(image => {
           let detections = image.detections;
           if (typeof detections === 'string') {
@@ -122,7 +129,6 @@ class ReportService {
           }
         });
 
-        // Detecções em ortomosaicos
         if (inspection.orthoResults) {
           inspection.orthoResults.forEach(ortho => {
             if (ortho.detections) {
@@ -152,12 +158,10 @@ class ReportService {
     let inspectionsHtml = '';
     if (inspectionsToReport.length > 0) {
       inspectionsHtml = inspectionsToReport.map(inspection => {
-        // Renderizar Ortomosaicos
         let orthoResultsHtml = '';
         if (inspection.orthoResults && inspection.orthoResults.length > 0) {
           orthoResultsHtml = inspection.orthoResults.map(ortho => {
             const orthoImgSrc = ortho.previewUrl || '';
-
             return `
               <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #004d40; border-radius: 5px; page-break-inside: avoid; background-color: #fff;">
                 <h4>Ortomosaico: ${path.basename(ortho.url)}</h4>
@@ -180,7 +184,6 @@ class ReportService {
                           <td>${det.center.lat.toFixed(6)}, ${det.center.lon.toFixed(6)}</td>
                         </tr>
                       `).join('')}
-                      ${ortho.detections.length > 50 ? '<tr><td colspan="3" style="text-align:center;">... e mais ${ortho.detections.length - 50} detecções</td></tr>' : ''}
                     </tbody>
                   </table>
                 ` : '<p>Nenhuma detecção encontrada neste ortomosaico.</p>'}
@@ -189,7 +192,6 @@ class ReportService {
           }).join('');
         }
 
-        // Renderizar Imagens Comuns
         let imagesHtml = '';
         if (inspection.images && inspection.images.length > 0) {
           imagesHtml = inspection.images.map(image => {
@@ -201,9 +203,7 @@ class ReportService {
                 detections = [];
               }
             }
-
             const imgSrc = image.url || '';
-
             return `
               <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 5px; page-break-inside: avoid;">
                 <h4>Imagem: ${image.url ? path.basename(image.url) : 'Nome da imagem indisponível'}</h4>
@@ -242,9 +242,7 @@ class ReportService {
               <p><strong>Data:</strong> ${inspection.inspectionDate}</p>
               <p><strong>Responsável:</strong> ${inspection.inspectionResponsible}</p>
             </div>
-            
             ${orthoResultsHtml ? `<h3>Resultados de Ortomosaicos</h3>${orthoResultsHtml}` : ''}
-            
             ${imagesHtml ? `<h3>Imagens de Inspeção</h3>${imagesHtml}` : ''}
           </div>
         `;
@@ -253,81 +251,45 @@ class ReportService {
       inspectionsHtml = '<p>Nenhuma inspeção ou imagem processada neste projeto.</p>';
     }
 
-    const reportHtml = `
+    return `
       <!DOCTYPE html>
       <html lang="pt-BR">
       <head>
           <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Relatório de Projeto - ${project.name}</title>
+          <title>Relatório - ${project.name}</title>
           <style>
-              body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; color: #333; line-height: 1.6; }
-              .header { background-color: #004d40; color: #ffffff; padding: 30px; text-align: center; }
-              .header h1 { margin: 0; font-size: 2.5em; }
-              .container { width: 90%; margin: 20px auto; }
-              .section { margin-bottom: 25px; padding: 20px; border: 1px solid #eee; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-              h2, h3, h4 { color: #004d40; margin-top: 0; }
-              img { max-width: 100%; height: auto; display: block; margin: 15px 0; border: 1px solid #ddd; border-radius: 4px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-              th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-              th { background-color: #f2f2f2; font-weight: bold; }
-              .footer { text-align: center; margin-top: 50px; padding: 20px; font-size: 0.9em; color: #777; border-top: 1px solid #eee; }
-              @media print {
-                .section { box-shadow: none; border: 1px solid #eee; }
-                .header { -webkit-print-color-adjust: exact; }
-              }
+              body { font-family: sans-serif; margin: 0; padding: 0; color: #333; line-height: 1.6; }
+              .header { background-color: #004d40; color: white; padding: 20px; text-align: center; }
+              .container { width: 95%; margin: 10px auto; }
+              .section { margin-bottom: 20px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: white; }
+              h2, h3 { color: #004d40; }
+              img { max-width: 100%; height: auto; margin: 10px 0; border: 1px solid #ddd; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background: #f2f2f2; }
+              .footer { text-align: center; font-size: 0.8em; color: #777; margin-top: 30px; }
           </style>
       </head>
       <body>
-          <div class="header">
-              <h1>Relatório de Projeto</h1>
-              <p style="font-size: 1.2em; margin-top: 10px;">${project.name}</p>
-          </div>
+          <div class="header"><h1>Relatório de Projeto: ${project.name}</h1></div>
           <div class="container">
               <div class="section">
-                  <h2>Informações do Projeto</h2>
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <p><strong>Nome:</strong> ${project.name}</p>
-                    <p><strong>Responsável:</strong> ${project.responsible}</p>
-                    <p><strong>Endereço:</strong> ${project.address}</p>
-                    <p><strong>Tipo:</strong> ${project.type}</p>
-                  </div>
-                  <p><strong>Módulos Ativos:</strong> ${Object.keys(project.modules).filter(key => project.modules[key as keyof typeof project.modules]).map(key => {
-                    switch (key) {
-                      case 'progress': return 'Progresso';
-                      case 'security': return 'Segurança';
-                      case 'maintenance': return 'Manutenção';
-                      default: return key;
-                    }
-                  }).join(', ') || 'Nenhum'}</p>
-                  ${project.modules.maintenance ? `
-                    <h3 style="margin-top: 15px;">Dados Técnicos (Manutenção)</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                      <p><strong>Ano Construído:</strong> ${project.buildingYear || 'Não informado'}</p>
-                      <p><strong>Área Construída:</strong> ${project.builtArea || 'Não informado'} m²</p>
-                      <p><strong>Tipologia da Fachada:</strong> ${project.facadeTypology || 'Não informado'}</p>
-                      <p><strong>Tipologia da Cobertura:</strong> ${project.roofTypology || 'Não informado'}</p>
-                    </div>
-                  ` : ''}
+                  <h2>Informações Gerais</h2>
+                  <p><strong>Responsável:</strong> ${project.responsible}</p>
+                  <p><strong>Endereço:</strong> ${project.address}</p>
+                  <p><strong>Ano:</strong> ${project.buildingYear || 'N/A'}</p>
               </div>
               <div class="section">
-                  <h2>Resumo de Patologias Detectadas</h2>
-                  <p><strong>Total de Defeitos Identificados:</strong> <span style="font-size: 1.2em; font-weight: bold; color: #d32f2f;">${totalDefects}</span></p>
+                  <h2>Resumo de Patologias</h2>
+                  <p>Total detectado: <strong>${totalDefects}</strong></p>
                   ${defectsByClassHtml}
               </div>
-              <div class="section">
-                  <h2>Detalhamento por Inspeção</h2>
-                  ${inspectionsHtml}
-              </div>
+              ${inspectionsHtml}
           </div>
-          <div class="footer">
-              <p>SMART TWIN-IE - Relatório Automatizado via IA</p>
-              <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
-          </div>
+          <div class="footer"><p>Gerado em ${new Date().toLocaleString('pt-BR')}</p></div>
       </body>
       </html>
     `;
-    return reportHtml;
   }
 }
 
