@@ -4,6 +4,9 @@ set -e
 # Get the absolute path of the backend directory
 BACKEND_DIR=$(pwd)
 
+echo "Instalando dependências do Backend..."
+npm install
+
 echo "Configurando segredos no Firebase..."
 
 # Função para extrair valor do .env
@@ -34,7 +37,14 @@ printf "%s" "$JWT_SECRET" | firebase functions:secrets:set JWT_SECRET_FB || true
 printf "%s" "$PYTHON_SERVICE_URL" | firebase functions:secrets:set PYTHON_SERVICE_URL || true
 printf "%s" "$PRIVATE_KEY" | firebase functions:secrets:set PRIVATE_KEY_FB || true
 
-echo "Segredos configurados. Iniciando deploy..."
+echo "Segredos configurados."
+
+echo "Iniciando Build do Frontend..."
+cd ../frontend
+npm run build
+cd "$BACKEND_DIR"
+
+echo "Iniciando deploy do Backend e Hosting..."
 
 # Renomeia .env para evitar conflitos no Firebase Functions V2
 mv "$BACKEND_DIR/.env" "$BACKEND_DIR/.env.bak"

@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs/promises';
@@ -165,103 +165,144 @@ class ProjectController {
 
   public processOrthoForResults = async (req: AuthRequest, res: Response): Promise<void> => {
     console.log('[ProjectController] Iniciando processOrthoForResults via Busboy');
-    const bb = busboy({ headers: req.headers });
-    let uploadedFile: { path: string; originalname: string } | null = null;
-    const fields: any = {};
-    let filePromise: Promise<void> = Promise.resolve();
+    
+    try {
+      const bb = busboy({ headers: req.headers });
+      let uploadedFile: { path: string; originalname: string } | null = null;
+      const fields: any = {};
+      const filePromises: Promise<void>[] = [];
 
-    bb.on('field', (name: string, val: string) => {
-      fields[name] = val;
-    });
-
-    bb.on('file', (name: string, file: NodeJS.ReadableStream, info: busboy.FileInfo) => {
-      const { filename } = info;
-      const saveTo = path.join(uploadConfig.tempDirectory, `${randomUUID()}-${filename}`);
-      uploadedFile = { path: saveTo, originalname: filename };
-      
-      const writeStream = fsSync.createWriteStream(saveTo);
-      file.pipe(writeStream);
-
-      filePromise = new Promise<void>((resolve, reject) => {
-        writeStream.on('finish', resolve);
-        writeStream.on('error', reject);
+      bb.on('field', (name: string, val: string) => {
+        fields[name] = val;
       });
-    });
 
-    bb.on('finish', async () => {
-      try {
-        await filePromise;
-
-        const { projectId, inspectionId } = fields;
-        if (!uploadedFile) {
-          if (!res.headersSent) {
-            return res.status(400).json({ error: 'Nenhum arquivo GeoTIFF enviado.' });
-          }
-          return;
-        }
-        if (!projectId || !inspectionId) {
-          if (!res.headersSent) {
-            return res.status(400).json({ error: 'ID do projeto e ID da inspeção são obrigatórios.' });
-          }
-          return;
-        }
-
-        const imageProcessingService = new ImageProcessingService();
-        const projectService = new ProjectService();
-        // @ts-ignore
-        const bucket = projectService.bucket;
-
-        const { detections, annotated_ortho_url, preview_url } = await imageProcessingService.processOrtho(uploadedFile.path);
-        const requestUuid = randomUUID();
-
-        const annotatedBuffer = await imageProcessingService.downloadFile(annotated_ortho_url);
-        const finalOrthoName = `${requestUuid}_annotated${path.extname(uploadedFile.originalname)}`;
-        const orthoStoragePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${finalOrthoName}`;
+      bb.on('file', (name: string, file: NodeJS.ReadableStream, info: busboy.FileInfo) => {
+        const { filename } = info;
+        const saveTo = path.join(uploadConfig.tempDirectory, `${randomUUID()}-${filename}`);
+        uploadedFile = { path: saveTo, originalname: filename };
         
-        await bucket.file(orthoStoragePath).save(annotatedBuffer, { metadata: { contentType: 'image/tiff' }, public: true });
+        console.log(`[ProjectController] Recebendo arquivo orto: ${filename} -> ${saveTo}`);
+        const writeStream = fsSync.createWriteStream(saveTo);
+        file.pipe(writeStream);
 
-        const previewBuffer = await imageProcessingService.downloadFile(preview_url);
-        const finalPreviewName = `${requestUuid}_preview.jpg`;
-        const previewStoragePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${finalPreviewName}`;
-        
-        await bucket.file(previewStoragePath).save(previewBuffer, { metadata: { contentType: 'image/jpeg' }, public: true });
+        const promise = new Promise<void>((resolve, reject) => {
+          writeStream.on('finish', resolve);
+          writeStream.on('error', reject);
+        });
+        filePromises.push(promise);
+      });
 
-        const orthoResult = {
-          url: `https://storage.googleapis.com/${bucket.name}/${orthoStoragePath}`,
-          previewUrl: `https://storage.googleapis.com/${bucket.name}/${previewStoragePath}`,
-          detections: detections.map((d: any) => ({ ...d, id: randomUUID() })),
-        };
+      bb.on('finish', async () => {
+        try {
+          await Promise.all(filePromises);
 
-        await projectService.addOrthoResultsToInspection({ projectId, inspectionId, orthoResults: [orthoResult] });
+          const { projectId, inspectionId } = fields;
+          console.log(`[ProjectController] Upload completo do navegador para o Backend. Projeto: ${projectId}`);
 
-        if (!res.headersSent) {
-          res.status(200).json({
-            message: 'Ortomosaico processado com sucesso.',
-            detections_count: detections.length,
-            preview_url: orthoResult.previewUrl
-          });
+          if (!uploadedFile || !projectId || !inspectionId) {
+            if (!res.headersSent) res.status(400).json({ error: 'Dados incompletos no upload.' });
+            return;
+          }
+
+          // RESPOSTA IMEDIATA: Libera o frontend agora!
+          if (!res.headersSent) {
+            res.status(202).json({
+              message: 'Upload concluído com sucesso! O processamento foi iniciado em segundo plano pela IA. Você pode continuar usando o sistema normalmente.',
+            });
+          }
+
+          // TRABALHO EM SEGUNDO PLANO (Não trava mais o navegador)
+          const imageProcessingService = new ImageProcessingService();
+          const host = req.get('host');
+          const protocol = host?.includes('localhost') ? req.protocol : 'https';
+          const hasApiPrefix = req.originalUrl.startsWith('/api/');
+          const callbackUrl = `${protocol}://${host}${hasApiPrefix ? '/api' : ''}/projects/ortho-callback`;
+
+          // Dispara para a IA sem dar 'await' no ciclo de resposta do Express
+          imageProcessingService.processOrtho(uploadedFile.path, projectId, inspectionId, callbackUrl)
+            .then(() => {
+              console.log(`[ProjectController] IA confirmou recebimento do projeto ${projectId}`);
+            })
+            .catch(err => {
+              console.error(`[ProjectController] FALHA crítica ao disparar IA:`, err.message);
+            })
+            .finally(() => {
+              if (uploadedFile) fs.unlink(uploadedFile.path).catch(() => {});
+            });
+
+        } catch (error) {
+          console.error('[Ortho Async Error]', error);
+          if (!res.headersSent) res.status(500).json({ error: 'Erro interno ao processar arquivo.' });
         }
-      } catch (error) {
-        console.error('[Ortho Processing Error]', error);
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Falha ao processar ortomosaico.' });
-        }
-      } finally {
-        if (uploadedFile) await fs.unlink(uploadedFile.path).catch(() => {});
-      }
-    });
+      });
 
-    bb.on('error', (err: any) => {
-      console.error('[Busboy Error]', err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Erro no stream de upload.' });
-      }
-    });
+      bb.on('error', (err: any) => {
+        console.error('[Busboy Error]', err);
+        if (!res.headersSent) res.status(500).json({ error: 'Erro no stream de upload.' });
+      });
 
-    if ((req as any).rawBody) {
-      bb.end((req as any).rawBody);
-    } else {
-      req.pipe(bb);
+      if ((req as any).rawBody) {
+        bb.end((req as any).rawBody);
+      } else {
+        req.pipe(bb);
+      }
+    } catch (err) {
+      console.error('[Ortho Controller Error]', err);
+      if (!res.headersSent) res.status(500).json({ error: 'Falha no controller.' });
+    }
+  }
+
+  public handleOrthoStatus = async (req: Request, res: Response): Promise<Response> => {
+    const { projectId, inspectionId, status } = req.body;
+    console.log(`[ProjectController] Status da IA para ${projectId}: ${status}`);
+
+    try {
+      const projectService = new ProjectService();
+      await projectService.updateInspectionOrthoStatus(projectId, inspectionId, status);
+      return res.status(200).json({ message: 'Status atualizado.' });
+    } catch (error) {
+      return res.status(500).json({ error: 'Falha ao atualizar status.' });
+    }
+  }
+
+  public handleOrthoCallback = async (req: Request, res: Response): Promise<Response> => {
+    const { projectId, inspectionId, detections, annotated_ortho_url, preview_url, filename } = req.body;
+
+    console.log(`[ProjectController] Recebido callback para o projeto ${projectId}, inspeção ${inspectionId}`);
+
+    try {
+      const imageProcessingService = new ImageProcessingService();
+      const projectService = new ProjectService();
+      // @ts-ignore
+      const bucket = projectService.bucket;
+
+      const requestUuid = randomUUID();
+
+      // Download e Upload do Ortomosaico Anotado
+      const annotatedBuffer = await imageProcessingService.downloadFile(annotated_ortho_url);
+      const finalOrthoName = `${requestUuid}_annotated${path.extname(filename)}`;
+      const orthoStoragePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${finalOrthoName}`;
+      await bucket.file(orthoStoragePath).save(annotatedBuffer, { metadata: { contentType: 'image/tiff' }, public: true });
+
+      // Download e Upload do Preview
+      const previewBuffer = await imageProcessingService.downloadFile(preview_url);
+      const finalPreviewName = `${requestUuid}_preview.jpg`;
+      const previewStoragePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${finalPreviewName}`;
+      await bucket.file(previewStoragePath).save(previewBuffer, { metadata: { contentType: 'image/jpeg' }, public: true });
+
+      const orthoResult = {
+        url: `https://storage.googleapis.com/${bucket.name}/${orthoStoragePath}`,
+        previewUrl: `https://storage.googleapis.com/${bucket.name}/${previewStoragePath}`,
+        detections: detections.map((d: any) => ({ ...d, id: randomUUID() })),
+      };
+
+      await projectService.addOrthoResultsToInspection({ projectId, inspectionId, orthoResults: [orthoResult] });
+
+      console.log(`[ProjectController] Resultados do ortomosaico salvos com sucesso para ${projectId}`);
+      return res.status(200).json({ message: 'Callback processado com sucesso.' });
+    } catch (error) {
+      console.error('[Callback Error]', error);
+      return res.status(500).json({ error: 'Falha ao processar callback de ortomosaico.' });
     }
   }
 

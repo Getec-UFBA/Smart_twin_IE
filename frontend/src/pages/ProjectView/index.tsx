@@ -202,7 +202,6 @@ const ProjectView: React.FC = () => {
           
           setProgress(Math.round(((successCount + failCount) * 100) / totalFiles));
           
-          // Delay de 1.5s entre imagens para evitar sobrecarga na IA
           if (i < totalFiles - 1) {
             await new Promise(resolve => setTimeout(resolve, 1500));
           }
@@ -229,13 +228,15 @@ const ProjectView: React.FC = () => {
         formData.append('projectId', project.id);
         formData.append('inspectionId', activeInspection.id);
 
+        const currentOrthoCount = activeInspection.orthoResults?.length || 0;
+
         const config = {
           onUploadProgress: (progressEvent: any) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setProgress(percentCompleted * 0.4); 
             if (percentCompleted === 100) {
-              setProgressStatus(t('project_view.progress_ai'));
-              startFakeProgress(40, 98, 1500);
+              setProgressStatus('Upload concluído! Iniciando IA...');
+              startFakeProgress(40, 95, 2000);
             } else {
               setProgressStatus(t('project_view.progress_uploading', { percent: percentCompleted }));
             }
@@ -244,21 +245,55 @@ const ProjectView: React.FC = () => {
         };
 
         await api.post('/projects/process-ortho', formData, config);
-        setProgress(100);
-        setProgressStatus(t('project_view.progress_ortho_success'));
-        setTimeout(() => {
-          setShowUploadModal(false);
-          fetchProject();
-          setProcessing(false);
-          setProgress(0);
-        }, 1500);
+        
+        setProgressStatus('A IA está recebendo o arquivo...');
+        setProgress(95);
+        
+        let attempts = 0;
+        const maxAttempts = 120; // 20 minutos
+        
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const response = await api.get(`/projects/${project.id}`);
+            const updatedProject = response.data;
+            const updatedInspection = updatedProject.inspections?.find((i: any) => i.id === activeInspection.id);
+            
+            // ATUALIZA O STATUS DA IA NA TELA
+            if (updatedInspection?.orthoStatus) {
+              setProgressStatus(updatedInspection.orthoStatus);
+            }
+
+            const newOrthoCount = updatedInspection?.orthoResults?.length || 0;
+
+            if (newOrthoCount > currentOrthoCount) {
+              clearInterval(pollInterval);
+              setProject(updatedProject);
+              setProgress(100);
+              setProgressStatus('Processamento concluído com sucesso!');
+              setTimeout(() => {
+                setShowUploadModal(false);
+                setProcessing(false);
+                setProgress(0);
+              }, 2500);
+            } else if (attempts >= maxAttempts) {
+              clearInterval(pollInterval);
+              setProgressStatus('Tempo esgotado. Verifique a dashboard em instantes.');
+              setTimeout(() => {
+                setProcessing(false);
+                setShowUploadModal(false);
+              }, 6000);
+            }
+          } catch (err) {
+            console.error('Polling error:', err);
+          }
+        }, 5000); // Polling mais rápido (5s) para pegar os status da IA
       }
     } catch (err) {
+      console.error('Erro no processamento:', err);
       alert(t('project_view.error_process'));
       setProcessing(false);
       setProgress(0);
-    } finally {
-      if (progressInterval.current) clearInterval(progressInterval.current);
     }
   };
 

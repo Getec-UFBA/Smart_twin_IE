@@ -14,7 +14,11 @@ const upload = multer({
 });
 const projectController = new ProjectController();
 
-// Todas as rotas de projeto precisam de autenticação
+// Rotas de callback e status para o ortomosaico (chamadas pela IA)
+projectRouter.post('/ortho-callback', projectController.handleOrthoCallback);
+projectRouter.post('/ortho-status', projectController.handleOrthoStatus);
+
+// Todas as rotas de projeto abaixo precisam de autenticação
 projectRouter.use(authenticateToken);
 
 projectRouter.get('/', projectController.index);

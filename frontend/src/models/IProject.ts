@@ -49,6 +49,7 @@ export interface IInspection {
   inspectionResponsible: string;
   images: IImage[];
   orthoResults?: IOrthoResult[];
+  orthoStatus?: string | null;
 }
 
 export interface IProject {

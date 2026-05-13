@@ -3,6 +3,7 @@ import { Readable } from 'stream';
 import FormData from 'form-data';
 import sharp from 'sharp';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 
 interface IDetection {
@@ -38,6 +39,9 @@ class ImageProcessingService {
 
   constructor() {
     this.pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+    if (this.pythonServiceUrl.includes('localhost') && process.env.NODE_ENV === 'production') {
+      console.warn('[ImageProcessingService] AVISO: PYTHON_SERVICE_URL parece estar apontando para localhost em produção!');
+    }
   }
 
   public async downloadFile(fileUrl: string): Promise<Buffer> {
@@ -58,11 +62,11 @@ class ImageProcessingService {
       const image = sharp(imagePath);
       const metadata = await image.metadata();
 
-      if (metadata.width && metadata.width > 1600) { // Reduzi um pouco mais para garantir estabilidade
+      if (metadata.width && metadata.width > 1600) {
         console.log(`[ImageProcessingService] Redimensionando imagem de ${metadata.width}px para 1600px`);
         await image
           .resize(1600, null, { withoutEnlargement: true })
-          .jpeg({ quality: 75 }) // Reduzi qualidade para 75%
+          .jpeg({ quality: 75 })
           .toFile(optimizedPath);
         return optimizedPath;
       }
@@ -89,7 +93,7 @@ class ImageProcessingService {
       }
 
       const formData = new FormData();
-      formData.append('file', require('fs').createReadStream(currentImagePath), {
+      formData.append('file', fsSync.createReadStream(currentImagePath), {
         filename: path.basename(currentImagePath),
       });
 
@@ -97,14 +101,14 @@ class ImageProcessingService {
         headers: {
           ...formData.getHeaders(),
         },
-        timeout: 120000, // Aumentado para 120 segundos (2 minutos)
+        timeout: 120000,
       });
 
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error) && (error.response?.status === 503 || error.code === 'ECONNABORTED') && retryCount < MAX_RETRIES) {
         console.warn(`[ImageProcessingService] IA Service instável (Status ${error.response?.status}). Tentativa ${retryCount + 1}/${MAX_RETRIES}...`);
-        await new Promise(resolve => setTimeout(resolve, 3000 * (retryCount + 1))); // Aumentado o delay entre retentativas
+        await new Promise(resolve => setTimeout(resolve, 3000 * (retryCount + 1)));
         return this.processImage(imagePath, retryCount + 1);
       }
 
@@ -117,26 +121,57 @@ class ImageProcessingService {
     }
   }
 
-  public async processOrtho(orthoPath: string): Promise<IProcessOrthoResponse> {
+  public async processOrtho(orthoPath: string, projectId: string, inspectionId: string, callbackUrl?: string): Promise<{ message: string; request_id: string }> {
+    console.log(`[ImageProcessingService] Iniciando envio de ortomosaico para IA: ${path.basename(orthoPath)}`);
+    console.log(`[ImageProcessingService] URL da IA: ${this.pythonServiceUrl.substring(0, 20)}...`);
+    
     try {
-      const formData = new FormData();
-      formData.append('file', require('fs').createReadStream(orthoPath), {
-        filename: require('path').basename(orthoPath),
-      });
+      // Verifica se o arquivo existe e o tamanho
+      const stats = await fs.stat(orthoPath);
+      console.log(`[ImageProcessingService] Tamanho do arquivo: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
 
-      const response = await axios.post<IProcessOrthoResponse>(`${this.pythonServiceUrl}/process-ortho/`, formData, {
+      const formData = new FormData();
+      formData.append('file', fsSync.createReadStream(orthoPath), {
+        filename: path.basename(orthoPath),
+      });
+      formData.append('projectId', projectId);
+      formData.append('inspectionId', inspectionId);
+      if (callbackUrl) {
+        formData.append('callbackUrl', callbackUrl);
+        console.log(`[ImageProcessingService] Callback configurado: ${callbackUrl}`);
+      }
+
+      // IMPORTANTE: Adicionada a barra '/' final para evitar Redirect 307
+      const response = await axios.post(`${this.pythonServiceUrl}/process-ortho/`, formData, {
         headers: {
           ...formData.getHeaders(),
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
-        timeout: 600000, // 10 minutos para ortomosaicos
+        timeout: 300000, // Aumentado para 5 minutos (apenas para o UPLOAD)
       });
 
+      console.log(`[ImageProcessingService] Resposta da IA: ${response.status} ${JSON.stringify(response.data)}`);
       return response.data;
     } catch (error) {
-      console.error('Error processing ortho with Python service:', error);
-      throw new Error('Failed to process orthomosaic with Python service.');
+      if (axios.isAxiosError(error)) {
+        console.error('[ImageProcessingService] Erro Axios ao chamar IA:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message,
+          code: error.code
+        });
+        
+        if (error.code === 'ECONNREFUSED') {
+          throw new Error('Não foi possível conectar ao serviço de IA. Verifique se a URL está correta.');
+        }
+        if (error.response?.status === 413) {
+          throw new Error('O arquivo do ortomosaico é grande demais para o serviço de IA.');
+        }
+      }
+      
+      console.error('Error triggering ortho processing with Python service:', error);
+      throw new Error('Failed to trigger orthomosaic processing with Python service.');
     }
   }
 

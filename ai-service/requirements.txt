@@ -7,5 +7,6 @@ rasterio
 onnx
 onnxruntime
 shapely
+httpx
 
 

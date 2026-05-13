@@ -478,6 +478,20 @@ class ProjectService {
     const previewPath = `projects/${projectId}/inspections/${inspectionId}/ortho/${previewName}`;
     await this.bucket.file(previewPath).delete().catch(() => {});
   }
+
+  public async updateInspectionOrthoStatus(projectId: string, inspectionId: string, status: string | null): Promise<void> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) return;
+
+    const updatedInspections = project.inspections?.map(i => {
+      if (i.id === inspectionId) {
+        return { ...i, orthoStatus: status };
+      }
+      return i;
+    });
+
+    await this.projectRepository.update(projectId, { inspections: updatedInspections });
+  }
 }
 
 export default ProjectService;
