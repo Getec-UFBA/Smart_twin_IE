@@ -1,21 +1,33 @@
-# Security Policy
+# Política de Segurança
 
-## Supported Versions
+Esta política descreve os procedimentos para o reporte e tratamento de vulnerabilidades no projeto **Smart Twin IE**. Valorizamos a segurança dos nossos usuários e a colaboração da comunidade.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Versões Suportadas
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+No momento, focamos nossos esforços de correção de segurança na versão principal do projeto.
 
-## Reporting a Vulnerability
+| Versão | Suporte a Segurança |
+| :--- | :--- |
+| Atual (Main) | ✅ Ativo |
+| Versões Antigas | ❌ Não suportado |
 
-Use this section to tell people how to report a vulnerability.
+## Como Reportar uma Vulnerabilidade
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Caso identifique uma falha de segurança, pedimos que **não utilize as Issues do GitHub** para o reporte inicial, a fim de evitar a exposição precoce da falha.
+
+Por favor, envie os detalhes técnicos diretamente para a nossa equipe:
+
+- **E-mail:** getec@gmail.com
+- **Assunto:** [SEGURANÇA] Relato de Vulnerabilidade
+
+### O que incluir no seu relato:
+- Uma descrição clara da vulnerabilidade.
+- Passos detalhados para reprodução (scripts ou prints são bem-vindos).
+- O impacto potencial que você identificou.
+
+## O que esperar de nós
+- Confirmaremos o recebimento do seu contato em até 72 horas.
+- Analisaremos a falha e definiremos um plano de correção.
+- Manteremos você informado sobre o progresso até que a correção seja publicada.
+
+Agradecemos o apoio em manter o Smart Twin IE seguro.
