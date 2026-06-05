@@ -36,9 +36,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, isAdmin }) => 
         {isAdmin && (
           <>
             <div className="sidebar-section-label">{t('sidebar.administration')}</div>
-            <Nav.Link as={NavLink} to="/register-user" onClick={handleNavLinkClick}>
+            <Nav.Link as={NavLink} to="/admin" onClick={handleNavLinkClick}>
               <FaUserPlus />
-              <span>{t('sidebar.register_user')}</span>
+              <span>{t('sidebar.admin_dashboard')}</span>
             </Nav.Link>
           </>
         )}

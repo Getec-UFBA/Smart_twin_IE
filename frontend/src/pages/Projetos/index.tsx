@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Container, Row, Col, Button, Modal, Form, Card, Stack } from 'react-bootstrap';
+import { Container, Row, Col, Button, Modal, Form, Card, ProgressBar } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../config/firebase';
 import { 
   FaSearch, FaTools, FaShieldAlt, FaChartLine, 
   FaFolderOpen, FaPlus, FaTrashAlt 
 } from 'react-icons/fa';
 import './style.css';
-
-const API_URL = 'http://localhost:3001';
 
 interface IOAE {
   id: string;
@@ -48,7 +48,7 @@ const Projetos: React.FC = () => {
     maintenance: false 
   });
 
-  // Estados do formulário (Simplificados para este exemplo de refatoração de UI)
+  // Estados do formulário
   const [projectName, setProjectName] = useState('');
   const [address, setAddress] = useState('');
   const [type, setType] = useState('');
@@ -57,8 +57,9 @@ const Projetos: React.FC = () => {
   const [bimModel, setBimModel] = useState<File | null>(null);
   const [modules, setModules] = useState({ progress: false, security: false, maintenance: false });
   
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -89,26 +90,78 @@ const Projetos: React.FC = () => {
     });
   }, [allProjects, searchTerm, selectedModules]);
 
+  const uploadFile = (file: File, path: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const storageRef = ref(storage, path);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        }, 
+        (error) => reject(error), 
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            resolve(downloadURL);
+          });
+        }
+      );
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formData = new FormData();
-    formData.append('name', projectName);
-    formData.append('address', address);
-    formData.append('type', type);
-    formData.append('responsible', responsible);
-    if (coverImage) formData.append('coverImage', coverImage);
-    if (bimModel) formData.append('bimModel', bimModel);
-    formData.append('modules', JSON.stringify(modules));
+    if (!coverImage || !bimModel) {
+      setError("Capa e Modelo BIM são obrigatórios.");
+      return;
+    }
+
+    setIsUploading(true);
+    setError('');
 
     try {
-      const response = await api.post('/projects', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const projectId = crypto.randomUUID(); // Geramos um ID temporário para o path do storage
+      
+      // 1. Upload da Capa
+      const coverUrl = await uploadFile(coverImage, `projects/${projectId}/cover/${coverImage.name}`);
+      
+      // 2. Upload do Modelo BIM
+      const bimUrl = await uploadFile(bimModel, `projects/${projectId}/bim/${bimModel.name}`);
+
+      // 3. Salva no Backend
+      const response = await api.post('/projects', {
+        name: projectName,
+        address,
+        type,
+        responsible,
+        coverImageUrl: coverUrl,
+        bimModelUrl: bimUrl,
+        modules: JSON.stringify(modules),
+        oaeData: JSON.stringify([]),
+        oaeBimModelUrls: []
       });
+
       setAllProjects([...allProjects, response.data]);
       setShowCreateModal(false);
+      resetForm();
     } catch (err) {
+      console.error(err);
       setError(t('projects.error_create'));
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
     }
+  };
+
+  const resetForm = () => {
+    setProjectName('');
+    setAddress('');
+    setType('');
+    setResponsible('');
+    setCoverImage(null);
+    setBimModel(null);
+    setModules({ progress: false, security: false, maintenance: false });
   };
 
   const confirmDelete = async () => {
@@ -187,7 +240,7 @@ const Projetos: React.FC = () => {
             <Col lg={4} md={6} key={project.id}>
               <Card className="project-card">
                 <div className="project-card-img-wrapper">
-                  <Card.Img variant="top" src={`${API_URL}/files/projects/${project.coverImageUrl}`} />
+                  <Card.Img variant="top" src={project.coverImageUrl} />
                   <div className="project-card-overlay">
                     {project.modules.maintenance && <div className="module-badge" title={t('projects.maintenance')}><FaTools /></div>}
                     {project.modules.progress && <div className="module-badge" title={t('projects.progress')}><FaChartLine /></div>}
@@ -237,12 +290,18 @@ const Projetos: React.FC = () => {
         </Row>
       </Container>
 
-      {/* MODAL CRIAR PROJETO (Estrutura mantida, apenas polimento visual) */}
-      <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg" centered>
+      {/* MODAL CRIAR PROJETO */}
+      <Modal show={showCreateModal} onHide={() => !isUploading && setShowCreateModal(false)} size="lg" centered>
         <Modal.Header closeButton><Modal.Title>{t('projects.modal_create_title')}</Modal.Title></Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleSubmit}>
             <Row>
+              {isUploading && (
+                <Col md={12} className="mb-4">
+                  <Form.Label>Fazendo upload dos arquivos ({Math.round(uploadProgress)}%)...</Form.Label>
+                  <ProgressBar animated now={uploadProgress} />
+                </Col>
+              )}
               <Col md={12} className="mb-4">
                 <Form.Label className="fw-bold">{t('projects.modal_active_modules')}</Form.Label>
                 <div className="d-flex gap-3">
@@ -252,22 +311,25 @@ const Projetos: React.FC = () => {
                 </div>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_project_name')}</Form.Label><Form.Control required value={projectName} onChange={e => setProjectName(e.target.value)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_project_name')}</Form.Label><Form.Control required value={projectName} onChange={e => setProjectName(e.target.value)} disabled={isUploading} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_responsible')}</Form.Label><Form.Control required value={responsible} onChange={e => setResponsible(e.target.value)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_responsible')}</Form.Label><Form.Control required value={responsible} onChange={e => setResponsible(e.target.value)} disabled={isUploading} /></Form.Group>
               </Col>
               <Col md={12}>
-                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_address')}</Form.Label><Form.Control value={address} onChange={e => setAddress(e.target.value)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_address')}</Form.Label><Form.Control value={address} onChange={e => setAddress(e.target.value)} disabled={isUploading} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_cover_image')}</Form.Label><Form.Control type="file" required onChange={e => setCoverImage((e.target as any).files ? (e.target as any).files[0] : null)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_cover_image')}</Form.Label><Form.Control type="file" required onChange={e => setCoverImage((e.target as any).files ? (e.target as any).files[0] : null)} disabled={isUploading} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_bim_model')}</Form.Label><Form.Control type="file" onChange={e => setBimModel((e.target as any).files ? (e.target as any).files[0] : null)} /></Form.Group>
+                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_bim_model')}</Form.Label><Form.Control type="file" onChange={e => setBimModel((e.target as any).files ? (e.target as any).files[0] : null)} disabled={isUploading} /></Form.Group>
               </Col>
             </Row>
-            <Button variant="primary" type="submit" className="w-100 mt-4">{t('projects.modal_create_button')}</Button>
+            {error && <p className="text-danger mt-2">{error}</p>}
+            <Button variant="primary" type="submit" className="w-100 mt-4" disabled={isUploading}>
+              {isUploading ? "Processando..." : t('projects.modal_create_button')}
+            </Button>
           </Form>
         </Modal.Body>
       </Modal>

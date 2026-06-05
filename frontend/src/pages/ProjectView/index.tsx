@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { Row, Col, Card, Button, Form, Modal, Alert, Badge, ProgressBar } from 'react-bootstrap';
@@ -17,7 +17,6 @@ import MaintenanceFeedback from '../../components/MaintenanceFeedback';
 const ProjectView: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [project, setProject] = useState<IProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -52,21 +51,30 @@ const ProjectView: React.FC = () => {
       const response = await api.get(`/projects/${id}`);
       const data = response.data;
       setProject(data);
-      
-      if (activeInspection) {
-        const updated = data.inspections?.find((i: IInspection) => i.id === activeInspection.id);
-        if (updated) setActiveInspection(updated);
-      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [id, activeInspection]);
+  }, [id]);
 
   useEffect(() => {
     if (id) fetchProject();
   }, [id, fetchProject]);
+
+  // Sincroniza os dados da inspeção ativa quando o projeto é atualizado (ex: após processar imagens)
+  useEffect(() => {
+    if (project && activeInspection) {
+      const updated = project.inspections?.find((i: IInspection) => i.id === activeInspection.id);
+      if (updated) {
+        // Só atualiza se houver mudança real nos dados (comparação simples de arrays para evitar loops)
+        if (updated.images.length !== activeInspection.images.length || 
+            (updated.orthoResults?.length || 0) !== (activeInspection.orthoResults?.length || 0)) {
+          setActiveInspection(updated);
+        }
+      }
+    }
+  }, [project, activeInspection]);
 
   // Navegação por teclado
   useEffect(() => {
@@ -163,54 +171,129 @@ const ProjectView: React.FC = () => {
     setProgress(0);
     setProgressStatus(t('project_view.progress_starting'));
     
-    const formData = new FormData();
     try {
-      const config = {
-        onUploadProgress: (progressEvent: any) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setProgress(percentCompleted * 0.4); 
-          if (percentCompleted === 100) {
-            setProgressStatus(t('project_view.progress_ai'));
-            startFakeProgress(40, 98, 1500);
-          } else {
-            setProgressStatus(t('project_view.progress_uploading', { percent: percentCompleted }));
+      if (processingType === 'images') {
+        let successCount = 0;
+        let failCount = 0;
+        const totalFiles = selectedFiles.length;
+
+        for (let i = 0; i < totalFiles; i++) {
+          const file = selectedFiles[i];
+          const formData = new FormData();
+          formData.append('images', file);
+          formData.append('projectId', project.id);
+          formData.append('inspectionId', activeInspection.id);
+
+          setProgressStatus(`Processando imagem ${i + 1} de ${totalFiles}: ${file.name}`);
+          
+          try {
+            await api.post('/projects/process-images', formData, {
+              onUploadProgress: (progressEvent: any) => {
+                const filePercent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                const totalPercent = Math.round(((successCount + failCount) * 100 + (filePercent * 0.9)) / totalFiles);
+                setProgress(totalPercent);
+              }
+            });
+            successCount++;
+          } catch (err) {
+            console.error(`Falha ao processar ${file.name}:`, err);
+            failCount++;
+          }
+          
+          setProgress(Math.round(((successCount + failCount) * 100) / totalFiles));
+          
+          if (i < totalFiles - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
           }
         }
-      };
 
-      if (processingType === 'images') {
-        selectedFiles.forEach(file => formData.append('images', file));
-        formData.append('projectId', project.id);
-        formData.append('inspectionId', activeInspection.id);
-        await api.post('/projects/process-images', formData, config);
-        setProgress(100);
-        setProgressStatus(t('project_view.progress_finished'));
-        setTimeout(() => {
-          setShowUploadModal(false);
-          fetchProject();
+        if (successCount > 0) {
+          setProgress(100);
+          setProgressStatus(t('project_view.progress_finished'));
+          setTimeout(() => {
+            setShowUploadModal(false);
+            fetchProject();
+            setProcessing(false);
+            setProgress(0);
+          }, 1500);
+        } else {
+          alert(t('project_view.error_process'));
           setProcessing(false);
           setProgress(0);
-        }, 1500);
+        }
+
       } else {
+        const formData = new FormData();
         formData.append('ortho', selectedFiles[0]);
         formData.append('projectId', project.id);
         formData.append('inspectionId', activeInspection.id);
-        await api.post('/projects/process-ortho', formData, { ...config, timeout: 0 });
-        setProgress(100);
-        setProgressStatus(t('project_view.progress_ortho_success'));
-        setTimeout(() => {
-          setShowUploadModal(false);
-          fetchProject();
-          setProcessing(false);
-          setProgress(0);
-        }, 1500);
+
+        const currentOrthoCount = activeInspection.orthoResults?.length || 0;
+
+        const config = {
+          onUploadProgress: (progressEvent: any) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setProgress(percentCompleted * 0.4); 
+            if (percentCompleted === 100) {
+              setProgressStatus('Upload concluído! Iniciando IA...');
+              startFakeProgress(40, 95, 2000);
+            } else {
+              setProgressStatus(t('project_view.progress_uploading', { percent: percentCompleted }));
+            }
+          },
+          timeout: 0
+        };
+
+        await api.post('/projects/process-ortho', formData, config);
+        
+        setProgressStatus('A IA está recebendo o arquivo...');
+        setProgress(95);
+        
+        let attempts = 0;
+        const maxAttempts = 120; // 20 minutos
+        
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const response = await api.get(`/projects/${project.id}`);
+            const updatedProject = response.data;
+            const updatedInspection = updatedProject.inspections?.find((i: any) => i.id === activeInspection.id);
+            
+            // ATUALIZA O STATUS DA IA NA TELA
+            if (updatedInspection?.orthoStatus) {
+              setProgressStatus(updatedInspection.orthoStatus);
+            }
+
+            const newOrthoCount = updatedInspection?.orthoResults?.length || 0;
+
+            if (newOrthoCount > currentOrthoCount) {
+              clearInterval(pollInterval);
+              setProject(updatedProject);
+              setProgress(100);
+              setProgressStatus('Processamento concluído com sucesso!');
+              setTimeout(() => {
+                setShowUploadModal(false);
+                setProcessing(false);
+                setProgress(0);
+              }, 2500);
+            } else if (attempts >= maxAttempts) {
+              clearInterval(pollInterval);
+              setProgressStatus('Tempo esgotado. Verifique a dashboard em instantes.');
+              setTimeout(() => {
+                setProcessing(false);
+                setShowUploadModal(false);
+              }, 6000);
+            }
+          } catch (err) {
+            console.error('Polling error:', err);
+          }
+        }, 5000); // Polling mais rápido (5s) para pegar os status da IA
       }
     } catch (err) {
+      console.error('Erro no processamento:', err);
       alert(t('project_view.error_process'));
       setProcessing(false);
       setProgress(0);
-    } finally {
-      if (progressInterval.current) clearInterval(progressInterval.current);
     }
   };
 
@@ -270,7 +353,7 @@ const ProjectView: React.FC = () => {
             <div className="inspection-icon"><FaChartLine /></div>
             <div className="inspection-info">
               <h6>{t('project_view.overview')}</h6>
-              <span>{t('project_view.project_stats')}</span>
+              <span>Dashboard do Projeto</span>
             </div>
           </div>
 
@@ -395,7 +478,7 @@ const ProjectView: React.FC = () => {
                               style={{ cursor: 'pointer', height: '100%', minHeight: '200px', background: 'var(--bg-main)' }}
                             >
                               <img 
-                                src={`http://localhost:3001${ortho.previewUrl}`} 
+                                src={ortho.previewUrl} 
                                 className="w-100 h-100 object-fit-cover" 
                                 alt="Preview" 
                               />
@@ -408,7 +491,7 @@ const ProjectView: React.FC = () => {
                                 {t('project_view.anomalies_detected', { count: ortho.detections.length })}
                               </div>
                               <div className="d-flex gap-2">
-                                <Button size="sm" variant="primary" onClick={() => window.open(`http://localhost:3001${ortho.url}`)}>
+                                <Button size="sm" variant="primary" onClick={() => window.open(ortho.url)}>
                                   <FaDownload className="me-1" /> {t('project_view.download_tiff')}
                                 </Button>
                               </div>
@@ -432,7 +515,7 @@ const ProjectView: React.FC = () => {
                   {activeInspection.images.map((img, idx) => (
                     <img 
                       key={idx}
-                      src={`http://localhost:3001${img.url}`} 
+                      src={img.url} 
                       className="result-card-img"
                       alt={`Defeito ${idx}`}
                       onClick={() => setExpandedImageIndex(idx)}
@@ -595,7 +678,7 @@ const ProjectView: React.FC = () => {
               </button>
 
               <img 
-                src={`http://localhost:3001${activeInspection.images[expandedImageIndex].url}`} 
+                src={activeInspection.images[expandedImageIndex].url} 
                 style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} 
                 alt="Fullscreen" 
               />

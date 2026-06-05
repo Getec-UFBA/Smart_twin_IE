@@ -18,14 +18,26 @@ class UpdateProfileService {
       throw new Error('Usuário não encontrado.');
     }
 
+    // Atualiza os campos do usuário
     user.name = name;
     user.company = company;
     user.bio = bio;
 
-    await this.userRepository.updateUser(user);
+    // O UserRepository já foi atualizado para salvar no Firestore
+    await this.userRepository.updateUser({
+      ...user,
+      id: userId,
+      name,
+      company,
+      bio
+    });
 
-    const { password, securityAnswer, ...userWithoutSensitiveData } = user;
-    return userWithoutSensitiveData;
+    const updatedUser = await this.userRepository.findById(userId);
+    if (!updatedUser) throw new Error('Falha ao recuperar usuário atualizado.');
+
+    // Retorna o usuário sem dados sensíveis
+    const { password, securityAnswer, ...userWithoutSensitiveData } = updatedUser;
+    return { ...userWithoutSensitiveData, id: userId };
   }
 }
 

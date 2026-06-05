@@ -5,10 +5,20 @@ import ProjectController from '../controllers/ProjectController';
 import { authenticateToken, authorizeRole } from '../middlewares/auth';
 
 const projectRouter = Router();
-const upload = multer({ storage: uploadConfig.storage(uploadConfig.projectsDirectory) });
+const upload = multer({ 
+  storage: uploadConfig.storage(uploadConfig.tempDirectory),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB por arquivo
+    fieldSize: 50 * 1024 * 1024
+  }
+});
 const projectController = new ProjectController();
 
-// Todas as rotas de projeto precisam de autenticação
+// Rotas de callback e status para o ortomosaico (chamadas pela IA)
+projectRouter.post('/ortho-callback', projectController.handleOrthoCallback);
+projectRouter.post('/ortho-status', projectController.handleOrthoStatus);
+
+// Todas as rotas de projeto abaixo precisam de autenticação
 projectRouter.use(authenticateToken);
 
 projectRouter.get('/', projectController.index);
@@ -16,17 +26,15 @@ projectRouter.get('/:id', projectController.show);
 projectRouter.put('/:id', authorizeRole(['admin']), projectController.update);
 projectRouter.delete('/:id', authorizeRole(['admin']), projectController.delete);
 
-// Route to start the image processing and create a pending review
+// Route to start the image processing (Busboy manual parsing)
 projectRouter.post(
   '/process-images',
-  upload.array('images', 50),
   projectController.processImagesForResults
 );
 
-// Route to process a single orthomosaic (GeoTIFF)
+// Route to process a single orthomosaic (Busboy manual parsing)
 projectRouter.post(
   '/process-ortho',
-  upload.single('ortho'),
   projectController.processOrthoForResults
 );
 
@@ -96,17 +104,9 @@ projectRouter.get(
   projectController.generateInspectionPdfReport
 );
 
-// Define os campos que o multer deve esperar
-const uploadFields = [
-  { name: 'coverImage', maxCount: 1 },
-  { name: 'bimModel', maxCount: 1 },
-  { name: 'oaeBimModel[]', maxCount: 30 }
-];
-
 projectRouter.post(
   '/',
   authorizeRole(['admin']),
-  upload.fields(uploadFields),
   projectController.create
 );
 

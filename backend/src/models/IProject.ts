@@ -43,15 +43,15 @@ export interface IOrthoResult {
 
 // Nova interface IInspection (substitui IFolder)
 export interface IInspection {
-  id: string; 
+  id: string;
   inspectionType: string;
   inspectionObjective: string;
   inspectionDate: string;
   inspectionResponsible: string;
   images: IImage[];
   orthoResults?: IOrthoResult[];
+  orthoStatus?: string | null;
 }
-
 export interface IProject {
   id: string;
   userId: string;

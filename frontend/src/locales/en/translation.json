@@ -4,7 +4,8 @@
     "home": "Home",
     "projects": "Projects",
     "administration": "Administration",
-    "register_user": "Register User"
+    "register_user": "Register User",
+    "admin_dashboard": "Admin Panel"
   },
   "navbar": {
     "profile": "Profile",
@@ -267,6 +268,36 @@
     "loading": "Loading...",
     "project_not_found": "Project not found.",
     "error_loading": "Error loading project data."
+  },
+  "maintenance_feedback": {
+    "title": "Pathology Control and Maintenance",
+    "inspection": "Inspection",
+    "date": "Date",
+    "resolved_types": "{{count}} Resolved Types",
+    "pending_types": "{{count}} Pending Types",
+    "table_pathology": "Pathology / Class",
+    "table_occurrences": "Occurrences",
+    "table_status": "Current Status",
+    "table_last_correction": "Last Correction",
+    "table_actions": "Management Actions",
+    "no_pathologies": "No pathologies identified for control.",
+    "instances": "{{count}} instances",
+    "status_resolved": "Resolved",
+    "status_pending": "Pending",
+    "by": "by",
+    "btn_reopen": "Reopen Class",
+    "btn_resolve_all": "Resolve All",
+    "modal_resolve_title": "Register Mass Correction",
+    "selected_pathology": "Selected Pathology",
+    "modal_resolve_desc": "This will mark all <strong>{{count}} occurrences</strong> of this pathology as resolved.",
+    "label_correction_date": "Correction Date",
+    "label_responsible": "Technical Responsible",
+    "placeholder_responsible": "Name of the engineer/technician",
+    "label_notes": "Execution Notes",
+    "placeholder_notes": "Describe in detail the corrective technique used and materials applied...",
+    "btn_cancel": "Cancel",
+    "btn_confirm_resolve": "Confirm and Resolve All",
+    "processing": "Processing..."
   },
   "footer": {
     "description": "Intelligent platform for pathology inspection and digital twin management in civil engineering.",

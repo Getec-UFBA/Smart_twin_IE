@@ -1,71 +1,39 @@
-import fs from 'fs/promises';
-import path from 'path';
+import { db } from '../config/firebase';
 import { IProject } from '../models/IProject';
 
-const DB_PATH = path.resolve(__dirname, '../../db.json');
-
-interface IDB {
-  users: any[]; // Não nos preocupamos com users aqui
-  projects: IProject[];
-}
-
 class ProjectRepository {
-  private async readDB(): Promise<IDB> {
-    try {
-      const data = await fs.readFile(DB_PATH, 'utf-8');
-      return JSON.parse(data);
-    } catch (error) {
-      if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return { users: [], projects: [] };
-      }
-      throw error;
-    }
-  }
-
-  private async writeDB(data: IDB): Promise<void> {
-    await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  }
+  private collection = db.collection('projects');
 
   public async findAll(): Promise<IProject[]> {
-    const db = await this.readDB();
-    return db.projects;
+    const snapshot = await this.collection.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as IProject));
   }
 
   public async findByUserId(userId: string): Promise<IProject[]> {
-    const db = await this.readDB();
-    return db.projects.filter(project => project.userId === userId);
+    const snapshot = await this.collection.where('userId', '==', userId).get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as IProject));
   }
 
   public async findById(projectId: string): Promise<IProject | undefined> {
-    const db = await this.readDB();
-    return db.projects.find(project => project.id === projectId);
+    const doc = await this.collection.doc(projectId).get();
+    if (!doc.exists) return undefined;
+    return { id: doc.id, ...doc.data() } as IProject;
   }
 
   public async create(projectData: IProject): Promise<IProject> {
-    const db = await this.readDB();
-    db.projects.push(projectData);
-    await this.writeDB(db);
+    const { id, ...data } = projectData;
+    await this.collection.doc(id).set(data);
     return projectData;
   }
 
   public async delete(projectId: string): Promise<void> {
-    const db = await this.readDB();
-    const updatedProjects = db.projects.filter(project => project.id !== projectId);
-    db.projects = updatedProjects;
-    await this.writeDB(db);
+    await this.collection.doc(projectId).delete();
   }
 
   public async update(projectId: string, updatedData: Partial<IProject>): Promise<IProject | undefined> {
-    const db = await this.readDB();
-    const projectIndex = db.projects.findIndex(project => project.id === projectId);
-
-    if (projectIndex === -1) {
-      return undefined;
-    }
-
-    db.projects[projectIndex] = { ...db.projects[projectIndex], ...updatedData };
-    await this.writeDB(db);
-    return db.projects[projectIndex];
+    const { id, ...data } = updatedData;
+    await this.collection.doc(projectId).update(data as any);
+    return this.findById(projectId);
   }
 }
 

@@ -1,36 +1,44 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+import { auth, db } from '../config/firebase';
 
 export interface AuthRequest extends Request {
   userId?: string;
   userRole?: 'admin' | 'user';
 }
 
-export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (token == null) {
-    return res.sendStatus(401); // No token provided
-  }
+  if (!token) return res.status(401).json({ message: 'No token provided' });
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) {
-      return res.sendStatus(403); // Token invalid or expired
+  try {
+    const decodedToken = await auth.verifyIdToken(token);
+    req.userId = decodedToken.uid;
+    
+    // Busca a role no Firestore
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+    
+    if (userDoc.exists) {
+      req.userRole = userDoc.data()?.role || 'user';
+    } else {
+      console.warn(`Perfil Firestore não encontrado para UID: ${decodedToken.uid}. Usando role padrão 'user'.`);
+      req.userRole = 'user';
     }
-    req.userId = user.id;
-    req.userRole = user.role;
+    
     next();
-  });
+  } catch (error) {
+    console.error('Erro na validação do Token Firebase:', error);
+    return res.status(403).json({ message: 'Invalid or expired token' });
+  }
 };
 
 export const authorizeRole = (roles: Array<'admin' | 'user'>) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.userRole || !roles.includes(req.userRole)) {
-      return res.status(403).json({ message: 'Access denied' });
+    if (req.userRole && roles.includes(req.userRole)) {
+      return next();
     }
-    next();
+    console.error(`Acesso Negado: Usuário ${req.userId} tem role '${req.userRole}' mas as rotas exigem: ${roles}`);
+    return res.status(403).json({ message: 'Access denied' });
   };
 };

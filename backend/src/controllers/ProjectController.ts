@@ -1,7 +1,8 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import { AuthRequest } from '../middlewares/auth';
 import ProjectService from '../services/ProjectService';
 import ProjectRepository from '../repositories/ProjectRepository';
@@ -9,6 +10,7 @@ import ImageProcessingService from '../services/ImageProcessingService';
 import ReportService from '../services/ReportService';
 import { IDetection, IImage } from '../models/IProject';
 import uploadConfig from '../config/upload';
+import busboy from 'busboy';
 
 // Interfaces for the review flow
 interface IPendingReviewImage {
@@ -39,83 +41,269 @@ class ProjectController {
     return res.json(project);
   }
 
-  public processImagesForResults = async (req: AuthRequest, res: Response): Promise<Response> => {
-    const files = req.files as Express.Multer.File[];
-    const { projectId, inspectionId } = req.body;
-
-    if (!files || files.length === 0) {
-      return res.status(400).json({ error: 'Nenhum arquivo de imagem enviado.' });
-    }
-
-    const imageProcessingService = new ImageProcessingService();
-    const projectService = new ProjectService();
+  public processImagesForResults = async (req: AuthRequest, res: Response): Promise<void> => {
+    console.log('[ProjectController] Iniciando processImagesForResults via Busboy');
     
-    // Se não houver projeto/inspeção, cria uma revisão pendente (Legado ou se necessário)
-    // Mas agora priorizamos o salvamento direto
-    const isDirectSave = !!(projectId && inspectionId);
-    const reviewId = !isDirectSave ? randomUUID() : null;
-    const reviewDir = reviewId ? path.join(uploadConfig.reviewsDirectory, reviewId) : null;
-    
-    if (reviewDir) {
-      await fs.mkdir(reviewDir, { recursive: true });
-    }
+    const bb = busboy({ headers: req.headers });
+    const files: { path: string; originalname: string }[] = [];
+    const fields: any = {};
+    const filePromises: Promise<void>[] = [];
 
-    const errors: { fileName: string; error: string }[] = [];
-    let processedCount = 0;
-
-    for (const file of files) {
-      try {
-        const { processedImageBase64, detections } = await this.getProcessedImageData(file.path, imageProcessingService);
-        
-        if (isDirectSave) {
-          // SALVAMENTO DIRETO NA INSPEÇÃO
-          await projectService.saveReviewedImage({
-            projectId,
-            inspectionId,
-            base64Data: processedImageBase64,
-            detections,
-            originalFileName: file.originalname
-          });
-        } else if (reviewDir && reviewId) {
-          // FLUXO DE REVISÃO (LEGADO)
-          const imageBuffer = Buffer.from(processedImageBase64, 'base64');
-          const imageId = randomUUID();
-          const imageFileName = `${imageId}.jpeg`;
-          const jsonFileName = `${imageId}.json`;
-
-          await fs.writeFile(path.join(reviewDir, imageFileName), imageBuffer);
-          await fs.writeFile(path.join(reviewDir, jsonFileName), JSON.stringify({ detections, originalFileName: file.originalname }));
-        }
-        
-        processedCount++;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`Error processing file ${file.originalname}:`, error);
-        errors.push({ fileName: file.originalname, error: errorMessage });
-      } finally {
-        await fs.unlink(file.path).catch(err => console.error(`Failed to unlink temp file: ${file.path}`, err));
-      }
-    }
-
-    if (processedCount === 0) {
-      return res.status(500).json({
-        message: 'Todos os arquivos falharam ao processar.',
-        errors: errors,
-      });
-    }
-
-    if (isDirectSave) {
-      return res.status(200).json({
-        message: `Sucesso: ${processedCount} imagens processadas e salvas diretamente.`,
-        errors: errors.length > 0 ? errors : undefined,
-      });
-    }
-
-    return res.status(200).json({
-      message: 'Imagens processadas e aguardando revisão.',
-      reviewId: reviewId,
-      errors: errors.length > 0 ? errors : undefined,
+    bb.on('field', (name: string, val: string) => {
+      fields[name] = val;
     });
+
+    bb.on('file', (name: string, file: NodeJS.ReadableStream, info: busboy.FileInfo) => {
+      const { filename } = info;
+      const saveTo = path.join(uploadConfig.tempDirectory, `${randomUUID()}-${filename}`);
+      files.push({ path: saveTo, originalname: filename });
+      
+      const writeStream = fsSync.createWriteStream(saveTo);
+      file.pipe(writeStream);
+
+      const promise = new Promise<void>((resolve, reject) => {
+        writeStream.on('finish', resolve);
+        writeStream.on('error', reject);
+      });
+      filePromises.push(promise);
+    });
+
+    bb.on('finish', async () => {
+      try {
+        // Aguarda todos os arquivos terminarem de ser gravados no disco
+        await Promise.all(filePromises);
+
+        const { projectId, inspectionId } = fields;
+        if (files.length === 0) {
+          if (!res.headersSent) {
+            return res.status(400).json({ error: 'Nenhum arquivo de imagem enviado.' });
+          }
+          return;
+        }
+
+        const imageProcessingService = new ImageProcessingService();
+        const projectService = new ProjectService();
+        const isDirectSave = !!(projectId && inspectionId);
+        const reviewId = !isDirectSave ? randomUUID() : null;
+        const reviewDir = reviewId ? path.join(uploadConfig.reviewsDirectory, reviewId) : null;
+        
+        if (reviewDir) {
+          await fs.mkdir(reviewDir, { recursive: true });
+        }
+
+        const errors: { fileName: string; error: string }[] = [];
+        let processedCount = 0;
+
+        // Processa as imagens SEQUENCIALMENTE para não sobrecarregar a IA (Evita 503/502)
+        for (const file of files) {
+          try {
+            console.log(`[ProjectController] Processando arquivo: ${file.originalname}`);
+            const { processedImageBase64, detections } = await this.getProcessedImageData(file.path, imageProcessingService);
+            
+            if (isDirectSave) {
+              await projectService.saveReviewedImage({
+                projectId,
+                inspectionId,
+                base64Data: processedImageBase64,
+                detections,
+                originalFileName: file.originalname
+              });
+            } else if (reviewDir && reviewId) {
+              const imageBuffer = Buffer.from(processedImageBase64, 'base64');
+              const imageId = randomUUID();
+              const imageFileName = `${imageId}.jpeg`;
+              const jsonFileName = `${imageId}.json`;
+
+              await fs.writeFile(path.join(reviewDir, imageFileName), imageBuffer);
+              await fs.writeFile(path.join(reviewDir, jsonFileName), JSON.stringify({ detections, originalFileName: file.originalname }));
+            }
+            processedCount++;
+          } catch (error) {
+            console.error(`Error processing file ${file.originalname}:`, error);
+            errors.push({ fileName: file.originalname, error: error instanceof Error ? error.message : 'Unknown error' });
+          } finally {
+            await fs.unlink(file.path).catch(() => {});
+          }
+        }
+
+        if (processedCount === 0) {
+          if (!res.headersSent) {
+            return res.status(500).json({ message: 'Todos os arquivos falharam ao processar.', errors });
+          }
+          return;
+        }
+
+        if (!res.headersSent) {
+          return res.status(200).json({
+            message: isDirectSave ? `Sucesso: ${processedCount} imagens processadas.` : 'Imagens aguardando revisão.',
+            reviewId,
+            errors: errors.length > 0 ? errors : undefined,
+          });
+        }
+      } catch (err) {
+        console.error('[Busboy Finish Error]', err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Erro interno ao processar upload.' });
+        }
+      }
+    });
+
+    bb.on('error', (err: any) => {
+      console.error('[Busboy Error]', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Erro no stream de upload.' });
+      }
+    });
+
+    // Em Firebase Functions, o corpo já pode estar em rawBody
+    if ((req as any).rawBody) {
+      bb.end((req as any).rawBody);
+    } else {
+      req.pipe(bb);
+    }
+  }
+
+  public processOrthoForResults = async (req: AuthRequest, res: Response): Promise<void> => {
+    console.log('[ProjectController] Iniciando processOrthoForResults via Busboy');
+    
+    try {
+      const bb = busboy({ headers: req.headers });
+      let uploadedFile: { path: string; originalname: string } | null = null;
+      const fields: any = {};
+      const filePromises: Promise<void>[] = [];
+
+      bb.on('field', (name: string, val: string) => {
+        fields[name] = val;
+      });
+
+      bb.on('file', (name: string, file: NodeJS.ReadableStream, info: busboy.FileInfo) => {
+        const { filename } = info;
+        const saveTo = path.join(uploadConfig.tempDirectory, `${randomUUID()}-${filename}`);
+        uploadedFile = { path: saveTo, originalname: filename };
+        
+        console.log(`[ProjectController] Recebendo arquivo orto: ${filename} -> ${saveTo}`);
+        const writeStream = fsSync.createWriteStream(saveTo);
+        file.pipe(writeStream);
+
+        const promise = new Promise<void>((resolve, reject) => {
+          writeStream.on('finish', resolve);
+          writeStream.on('error', reject);
+        });
+        filePromises.push(promise);
+      });
+
+      bb.on('finish', async () => {
+        try {
+          await Promise.all(filePromises);
+
+          const { projectId, inspectionId } = fields;
+          console.log(`[ProjectController] Upload completo do navegador para o Backend. Projeto: ${projectId}`);
+
+          if (!uploadedFile || !projectId || !inspectionId) {
+            if (!res.headersSent) res.status(400).json({ error: 'Dados incompletos no upload.' });
+            return;
+          }
+
+          // RESPOSTA IMEDIATA: Libera o frontend agora!
+          if (!res.headersSent) {
+            res.status(202).json({
+              message: 'Upload concluído com sucesso! O processamento foi iniciado em segundo plano pela IA. Você pode continuar usando o sistema normalmente.',
+            });
+          }
+
+          // TRABALHO EM SEGUNDO PLANO (Não trava mais o navegador)
+          const imageProcessingService = new ImageProcessingService();
+          const host = req.get('host');
+          const protocol = host?.includes('localhost') ? req.protocol : 'https';
+          const hasApiPrefix = req.originalUrl.startsWith('/api/');
+          const callbackUrl = `${protocol}://${host}${hasApiPrefix ? '/api' : ''}/projects/ortho-callback`;
+
+          // Dispara para a IA sem dar 'await' no ciclo de resposta do Express
+          imageProcessingService.processOrtho(uploadedFile.path, projectId, inspectionId, callbackUrl)
+            .then(() => {
+              console.log(`[ProjectController] IA confirmou recebimento do projeto ${projectId}`);
+            })
+            .catch(err => {
+              console.error(`[ProjectController] FALHA crítica ao disparar IA:`, err.message);
+            })
+            .finally(() => {
+              if (uploadedFile) fs.unlink(uploadedFile.path).catch(() => {});
+            });
+
+        } catch (error) {
+          console.error('[Ortho Async Error]', error);
+          if (!res.headersSent) res.status(500).json({ error: 'Erro interno ao processar arquivo.' });
+        }
+      });
+
+      bb.on('error', (err: any) => {
+        console.error('[Busboy Error]', err);
+        if (!res.headersSent) res.status(500).json({ error: 'Erro no stream de upload.' });
+      });
+
+      if ((req as any).rawBody) {
+        bb.end((req as any).rawBody);
+      } else {
+        req.pipe(bb);
+      }
+    } catch (err) {
+      console.error('[Ortho Controller Error]', err);
+      if (!res.headersSent) res.status(500).json({ error: 'Falha no controller.' });
+    }
+  }
+
+  public handleOrthoStatus = async (req: Request, res: Response): Promise<Response> => {
+    const { projectId, inspectionId, status } = req.body;
+    console.log(`[ProjectController] Status da IA para ${projectId}: ${status}`);
+
+    try {
+      const projectService = new ProjectService();
+      await projectService.updateInspectionOrthoStatus(projectId, inspectionId, status);
+      return res.status(200).json({ message: 'Status atualizado.' });
+    } catch (error) {
+      return res.status(500).json({ error: 'Falha ao atualizar status.' });
+    }
+  }
+
+  public handleOrthoCallback = async (req: Request, res: Response): Promise<Response> => {
+    const { projectId, inspectionId, detections, annotated_ortho_url, preview_url, filename } = req.body;
+
+    console.log(`[ProjectController] Recebido callback para o projeto ${projectId}, inspeção ${inspectionId}`);
+
+    try {
+      const imageProcessingService = new ImageProcessingService();
+      const projectService = new ProjectService();
+      // @ts-ignore
+      const bucket = projectService.bucket;
+
+      const requestUuid = randomUUID();
+
+      // Download e Upload do Ortomosaico Anotado
+      const annotatedBuffer = await imageProcessingService.downloadFile(annotated_ortho_url);
+      const finalOrthoName = `${requestUuid}_annotated${path.extname(filename)}`;
+      const orthoStoragePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${finalOrthoName}`;
+      await bucket.file(orthoStoragePath).save(annotatedBuffer, { metadata: { contentType: 'image/tiff' }, public: true });
+
+      // Download e Upload do Preview
+      const previewBuffer = await imageProcessingService.downloadFile(preview_url);
+      const finalPreviewName = `${requestUuid}_preview.jpg`;
+      const previewStoragePath = `projects/${projectId}/inspections/${inspectionId}/ortho/${finalPreviewName}`;
+      await bucket.file(previewStoragePath).save(previewBuffer, { metadata: { contentType: 'image/jpeg' }, public: true });
+
+      const orthoResult = {
+        url: `https://storage.googleapis.com/${bucket.name}/${orthoStoragePath}`,
+        previewUrl: `https://storage.googleapis.com/${bucket.name}/${previewStoragePath}`,
+        detections: detections.map((d: any) => ({ ...d, id: randomUUID() })),
+      };
+
+      await projectService.addOrthoResultsToInspection({ projectId, inspectionId, orthoResults: [orthoResult] });
+
+      console.log(`[ProjectController] Resultados do ortomosaico salvos com sucesso para ${projectId}`);
+      return res.status(200).json({ message: 'Callback processado com sucesso.' });
+    } catch (error) {
+      console.error('[Callback Error]', error);
+      return res.status(500).json({ error: 'Falha ao processar callback de ortomosaico.' });
+    }
   }
 
   public getReview = async (req: AuthRequest, res: Response): Promise<Response> => {
@@ -217,76 +405,12 @@ class ProjectController {
     }
   }
 
-  public processOrthoForResults = async (req: AuthRequest, res: Response): Promise<Response> => {
-    const file = req.file;
-    const { projectId, inspectionId } = req.body;
-
-    if (!file) {
-      return res.status(400).json({ error: 'Nenhum arquivo GeoTIFF enviado.' });
-    }
-
-    if (!projectId || !inspectionId) {
-      return res.status(400).json({ error: 'ID do projeto e ID da inspeção são obrigatórios.' });
-    }
-
-    const imageProcessingService = new ImageProcessingService();
-    const projectService = new ProjectService();
-
-    try {
-      // 1. Processa no serviço de IA
-      const { detections, annotated_ortho_url, preview_url } = await imageProcessingService.processOrtho(file.path);
-      
-      const requestUuid = randomUUID();
-      const finalDir = path.resolve(uploadConfig.projectsDirectory, projectId, inspectionId);
-      await fs.mkdir(finalDir, { recursive: true });
-
-      // 2. Baixa o GeoTIFF anotado e salva
-      const annotatedBuffer = await imageProcessingService.downloadFile(annotated_ortho_url);
-      const finalOrthoName = `${requestUuid}_annotated${path.extname(file.originalname)}`;
-      const finalOrthoPath = path.join(finalDir, finalOrthoName);
-      await fs.writeFile(finalOrthoPath, annotatedBuffer);
-
-      // 3. Baixa a imagem de pré-visualização e salva
-      const previewBuffer = await imageProcessingService.downloadFile(preview_url);
-      const finalPreviewName = `${requestUuid}_preview.jpg`;
-      const finalPreviewPath = path.join(finalDir, finalPreviewName);
-      await fs.writeFile(finalPreviewPath, previewBuffer);
-
-      const orthoResult = {
-        url: `/files/projects/${projectId}/${inspectionId}/${finalOrthoName}`,
-        previewUrl: `/files/projects/${projectId}/${inspectionId}/${finalPreviewName}`,
-        detections: detections,
-      };
-
-      await projectService.addOrthoResultsToInspection({
-        projectId,
-        inspectionId,
-        orthoResults: [orthoResult],
-      });
-
-      return res.status(200).json({
-        message: 'Ortomosaico processado com sucesso.',
-        detections_count: detections.length,
-        preview_url: orthoResult.previewUrl
-      });
-
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`Error processing ortho ${file.originalname}:`, error);
-      return res.status(500).json({ error: `Falha ao processar ortomosaico: ${errorMessage}` });
-    } finally {
-      if (file && file.path) {
-        await fs.unlink(file.path).catch(() => {});
-      }
-    }
-  }
-
   private getProcessedImageData = async (imagePath: string, imageProcessingService: ImageProcessingService): Promise<{ processedImageBase64: string; detections: IDetection[] }> => {
     try {
       const processedImageResponse = await imageProcessingService.processImage(imagePath);
       return {
         processedImageBase64: processedImageResponse.processed_image_base64,
-        detections: processedImageResponse.detections,
+        detections: processedImageResponse.detections.map((d: any) => ({ ...d, id: randomUUID() })),
       };
     } catch (error) {
       console.error(`Error in getProcessedImageData for ${imagePath}:`, error);
@@ -303,6 +427,9 @@ class ProjectController {
       responsible, 
       modules, 
       oaeData,
+      coverImageUrl,
+      bimModelUrl,
+      oaeBimModelUrls,
       buildingYear,
       builtArea,
       facadeTypology,
@@ -310,12 +437,6 @@ class ProjectController {
       buildingAcronym,
       unitDirector
     } = req.body;
-    
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const allFiles = Object.values(files).flat().map(file => ({
-      fieldname: file.fieldname,
-      filename: file.filename
-    }));
     
     if (!userId) {
       return res.status(400).json({ error: 'ID do usuário não encontrado no token.' });
@@ -332,7 +453,9 @@ class ProjectController {
         responsible,
         modules,
         oaeData,
-        files: allFiles,
+        coverImageUrl,
+        bimModelUrl,
+        oaeBimModelUrls,
         buildingYear,
         builtArea,
         facadeTypology,

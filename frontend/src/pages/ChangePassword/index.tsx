@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import api from '../../services/api';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { auth } from '../../config/firebase';
 import PasswordInput from '../../components/PasswordInput';
 import { FaKey, FaSave, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
 import './style.css';
@@ -24,19 +25,31 @@ const ChangePassword: React.FC = () => {
       return;
     }
 
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      setError("Usuário não autenticado.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await api.patch('/profile/change-password', {
-        oldPassword,
-        newPassword,
-        confirmPassword,
-      });
+      // Firebase exige reautenticação para mudar a senha se o login não for recente
+      const credential = EmailAuthProvider.credential(user.email, oldPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      await updatePassword(user, newPassword);
+      
       setSuccess(t('change_password.success_message'));
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setError(err.response?.data?.error || t('change_password.error_change'));
+      console.error(err);
+      if (err.code === 'auth/wrong-password') {
+        setError("A senha atual está incorreta.");
+      } else {
+        setError(t('change_password.error_change'));
+      }
     } finally {
       setLoading(false);
     }

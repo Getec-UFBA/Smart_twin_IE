@@ -9,10 +9,10 @@ import ProjectResults from './pages/ProjectResults';
 import OtherModules from './pages/OtherModules';
 import Dashboard from './pages/Dashboard';
 import RegisterUser from './pages/RegisterUser';
-import CompleteRegistration from './pages/CompleteRegistration';
 import ForgotPassword from './pages/ForgotPassword';
 import Profile from './pages/Profile';
 import ChangePassword from './pages/ChangePassword'; 
+import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import ReviewImages from './pages/ReviewImages'; // Import the new component
 import { ThemeContext } from './contexts/ThemeContext';
@@ -30,7 +30,6 @@ function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
-        <Route path="complete-registration" element={<CompleteRegistration />} />
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="projetos" element={
           <ProtectedRoute>
@@ -72,11 +71,12 @@ function App() {
             <ChangePassword />
           </ProtectedRoute>
         } />
-        <Route path="register-user" element={
+        <Route path="admin" element={
           <ProtectedRoute roles={['admin']}>
-            <RegisterUser />
+            <AdminDashboard />
           </ProtectedRoute>
         } />
+        <Route path="register-user" element={<RegisterUser />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

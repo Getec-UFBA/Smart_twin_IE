@@ -1,7 +1,15 @@
 import React, { createContext, useState, useContext, useEffect, type ReactNode } from 'react';
+import { 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged,
+  type User as FirebaseUser
+} from 'firebase/auth';
+import { auth, db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import api from '../services/api';
 
-// Interface completa do usuário, espelhando o backend
+// Interface completa do usuário
 interface IUser {
   id: string;
   email: string;
@@ -18,7 +26,7 @@ interface AuthContextData {
   loading: boolean;
   login(credentials: any): Promise<void>;
   logout(): void;
-  updateUser(data: IUser): void; // Nova função para atualizar o usuário
+  updateUser(data: IUser): void;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -29,35 +37,59 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadStoragedData() {
-      const storedUser = localStorage.getItem('@gdp:user');
-      const storedToken = localStorage.getItem('@gdp:token');
-
-      if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
+    // Monitora o estado de autenticação do Firebase
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      setLoading(true);
+      if (firebaseUser) {
+        try {
+          // Força a obtenção de um token novo e válido
+          const idToken = await firebaseUser.getIdToken(true);
+          setToken(idToken);
+          
+          // Configura o token no Axios IMEDIATAMENTE
+          api.defaults.headers.Authorization = `Bearer ${idToken}`;
+          
+          // Busca dados adicionais do usuário no Firestore
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          
+          if (userDoc.exists()) {
+            const userData = { id: firebaseUser.uid, ...userDoc.data() } as IUser;
+            setUser(userData);
+            localStorage.setItem('@gdp:user', JSON.stringify(userData));
+          } else {
+            const basicUser: IUser = {
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              role: 'user'
+            };
+            setUser(basicUser);
+          }
+        } catch (error) {
+          console.error("Erro ao processar login:", error);
+          await firebaseSignOut(auth);
+        }
+      } else {
+        setUser(null);
+        setToken(null);
+        delete api.defaults.headers.Authorization;
+        localStorage.clear(); // Limpa TUDO para evitar conflitos com versões antigas
       }
       setLoading(false);
-    }
-    loadStoragedData();
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (credentials: any) => {
-    const response = await api.post('/auth/login', credentials);
-    const { user: apiUser, token: apiToken } = response.data;
-
-    setUser(apiUser);
-    setToken(apiToken);
-
-    localStorage.setItem('@gdp:user', JSON.stringify(apiUser));
-    localStorage.setItem('@gdp:token', apiToken);
+  const login = async ({ email, password }: any) => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const idToken = await userCredential.user.getIdToken();
+    
+    setToken(idToken);
+    api.defaults.headers.Authorization = `Bearer ${idToken}`;
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('@gdp:user');
-    localStorage.removeItem('@gdp:token');
+  const logout = async () => {
+    await firebaseSignOut(auth);
   };
 
   const updateUser = (data: IUser) => {
