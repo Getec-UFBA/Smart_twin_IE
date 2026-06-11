@@ -79,12 +79,14 @@ const Projetos: React.FC = () => {
 
   const filteredProjects = useMemo(() => {
     return allProjects.filter(project => {
+      const name = project.name || '';
+      const responsible = project.responsible || '';
       const searchMatch = searchTerm === '' ||
-        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.responsible.toLowerCase().includes(searchTerm.toLowerCase());
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        responsible.toLowerCase().includes(searchTerm.toLowerCase());
 
       const activeFilters = (Object.keys(selectedModules) as Array<keyof typeof selectedModules>).filter(key => selectedModules[key]);
-      const moduleMatch = activeFilters.length === 0 || activeFilters.every(module => project.modules[module]);
+      const moduleMatch = activeFilters.length === 0 || (project.modules && activeFilters.every(module => project.modules[module]));
 
       return searchMatch && moduleMatch;
     });

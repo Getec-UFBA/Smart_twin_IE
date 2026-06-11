@@ -28,6 +28,7 @@ class ProjectController {
   public async index(req: AuthRequest, res: Response): Promise<Response> {
     const projectRepository = new ProjectRepository();
     const projects = await projectRepository.findAll();
+    console.log(`[ProjectController] Found ${projects.length} projects`);
     return res.json(projects);
   }
 
