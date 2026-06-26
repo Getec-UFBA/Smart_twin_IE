@@ -42,6 +42,7 @@ const ProjectView: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<IProject>>({});
+  const [showConfirmEdit, setShowConfirmEdit] = useState(false);
   
   // Navegação de Imagens Expandidas
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
@@ -109,17 +110,27 @@ const ProjectView: React.FC = () => {
         address: project.address,
         type: project.type,
         responsible: project.responsible,
+        buildingYear: project.buildingYear,
+        builtArea: project.builtArea,
+        roofTypology: project.roofTypology,
       });
+      setShowConfirmEdit(false);
       setShowEditModal(true);
     }
   };
 
-  const handleUpdateProject = async (e: React.FormEvent) => {
+  const handleSubmitEditForm = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowConfirmEdit(true);
+  };
+
+  const handleUpdateProject = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!project) return;
     try {
       await api.put(`/projects/${project.id}`, editFormData);
       setShowEditModal(false);
+      setShowConfirmEdit(false);
       fetchProject();
     } catch (err) {
       alert(t('project_view.error_update'));
@@ -697,14 +708,99 @@ const ProjectView: React.FC = () => {
       </Modal>
 
       {/* MODAL EDITAR PROJETO */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered>
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg" centered>
         <Modal.Header closeButton><Modal.Title>{t('projects.modal_create_title')}</Modal.Title></Modal.Header>
         <Modal.Body>
-          <Form onSubmit={handleUpdateProject}>
-            <Form.Group className="mb-3"><Form.Label>{t('projects.modal_project_name')}</Form.Label><Form.Control value={editFormData.name || ''} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>{t('projects.modal_address')}</Form.Label><Form.Control value={editFormData.address || ''} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} /></Form.Group>
-            <Button variant="primary" type="submit" className="w-100">{t('profile.save_button')}</Button>
-          </Form>
+          {showConfirmEdit ? (
+            <div className="text-center py-4">
+              <h4 className="mb-3 fw-bold text-warning">Confirmar Alterações?</h4>
+              <p className="text-muted mb-4 text-center mx-auto" style={{ maxWidth: '450px' }}>
+                Você tem certeza de que deseja salvar as novas informações do projeto? 
+                Esta ação atualizará as especificações técnicas de forma permanente.
+              </p>
+              <div className="d-flex gap-3 justify-content-center">
+                <Button variant="outline-secondary" className="px-4" onClick={() => setShowConfirmEdit(false)}>
+                  Voltar e Editar
+                </Button>
+                <Button variant="primary" className="px-4" onClick={() => handleUpdateProject()}>
+                  Confirmar e Salvar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Form onSubmit={handleSubmitEditForm}>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_project_name')}</Form.Label>
+                    <Form.Control 
+                      required 
+                      value={editFormData.name || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_responsible')}</Form.Label>
+                    <Form.Control 
+                      required 
+                      value={editFormData.responsible || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, responsible: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={12}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_address')}</Form.Label>
+                    <Form.Control 
+                      value={editFormData.address || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_building_year')}</Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Ex: 2020" 
+                      value={editFormData.buildingYear || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, buildingYear: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_built_area')}</Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Ex: 150" 
+                      value={editFormData.builtArea || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, builtArea: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_roof_typology')}</Form.Label>
+                    <Form.Select 
+                      value={editFormData.roofTypology || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, roofTypology: e.target.value })}
+                    >
+                      <option value="">{t('projects.modal_select_roof')}</option>
+                      <option value="Fibrocimento">Fibrocimento</option>
+                      <option value="Cerâmico">Cerâmico</option>
+                      <option value="Concreto">Concreto</option>
+                      <option value="Metálico">Metálico</option>
+                      <option value="misto">misto</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Button variant="primary" type="submit" className="w-100 mt-3">{t('profile.save_button')}</Button>
+            </Form>
+          )}
         </Modal.Body>
       </Modal>
 

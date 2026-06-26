@@ -32,10 +32,6 @@ __pycache__/
 .venv/
 venv/
 
-# --- Banco de Dados Local ---
-# Não ignoramos o db.json por padrão pois ele contém a estrutura inicial, 
-# mas se o usuário preferir ignorar mudanças locais:
-# backend/db.json
 
 # --- OS específicos ---
 Thumbs.db

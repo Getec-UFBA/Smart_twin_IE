@@ -101,14 +101,12 @@ class ProjectService {
       oae: oaeWithFiles,
     };
 
-    if (parsedModules.maintenance) {
-      newProject.buildingYear = buildingYear;
-      newProject.builtArea = builtArea;
-      newProject.facadeTypology = facadeTypology;
-      newProject.roofTypology = roofTypology;
-      newProject.buildingAcronym = buildingAcronym;
-      newProject.unitDirector = unitDirector;
-    }
+    newProject.buildingYear = buildingYear;
+    newProject.builtArea = builtArea;
+    newProject.facadeTypology = facadeTypology;
+    newProject.roofTypology = roofTypology;
+    newProject.buildingAcronym = buildingAcronym;
+    newProject.unitDirector = unitDirector;
 
     return this.projectRepository.create(newProject);
   }
