@@ -9,10 +9,25 @@ import {
   FaCog, FaTrash, FaUpload, FaDownload, 
   FaClipboardList, FaProjectDiagram, FaMapMarkedAlt, 
   FaImages, FaChartLine, FaPlus, FaMinus, FaCloudUploadAlt, FaTools,
-  FaChevronLeft, FaChevronRight, FaHammer, FaSyncAlt
+  FaChevronLeft, FaChevronRight, FaHammer, FaSyncAlt, FaCalendarAlt,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import type { IProject, IInspection } from '../../models/IProject';
 import MaintenanceFeedback from '../../components/MaintenanceFeedback';
+
+const isInspectionFuture = (dateStr?: string) => {
+  if (!dateStr) return false;
+  try {
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    return dateStr > todayStr;
+  } catch (error) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const inspDate = new Date(year, month - 1, day);
+    return inspDate > today;
+  }
+};
 
 const ProjectView: React.FC = () => {
   const { t } = useTranslation();
@@ -34,6 +49,22 @@ const ProjectView: React.FC = () => {
   const [activeInspection, setActiveInspection] = useState<IInspection | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+
+  const duplicateFiles = selectedFiles.filter(file => {
+    if (!activeInspection) return false;
+    const nameLower = file.name.toLowerCase();
+    const inImages = activeInspection.images?.some(img => 
+      img.originalName?.toLowerCase() === nameLower || 
+      img.url.toLowerCase().endsWith(`/${nameLower}`) ||
+      img.url.toLowerCase().endsWith(`-${nameLower}`)
+    );
+    const inOrtho = activeInspection.orthoResults?.some(ortho => 
+      ortho.originalName?.toLowerCase() === nameLower || 
+      ortho.url.toLowerCase().endsWith(`/${nameLower}`) ||
+      ortho.url.toLowerCase().endsWith(`-${nameLower}`)
+    );
+    return inImages || inOrtho;
+  });
   
   const [newInspectionObjective, setNewInspectionObjective] = useState('');
   const [inspectionType, setInspectionType] = useState('Preventiva');
@@ -489,21 +520,36 @@ const ProjectView: React.FC = () => {
             </div>
           </div>
 
-          {project.inspections?.map(insp => (
-            <div 
-              key={insp.id}
-              className={`inspection-item ${activeInspection?.id === insp.id ? 'active' : ''}`}
-              onClick={() => setActiveInspection(insp)}
-            >
-              <div className="inspection-icon">
-                {insp.orthoResults?.length ? <FaMapMarkedAlt className="text-primary" /> : <FaClipboardList />}
+          {project.inspections?.map(insp => {
+            const isFuture = isInspectionFuture(insp.inspectionDate);
+            return (
+              <div 
+                key={insp.id}
+                className={`inspection-item ${activeInspection?.id === insp.id ? 'active' : ''}`}
+                onClick={() => setActiveInspection(insp)}
+              >
+                <div className="inspection-icon">
+                  {isFuture ? (
+                    <FaCalendarAlt className="text-warning" />
+                  ) : insp.orthoResults?.length ? (
+                    <FaMapMarkedAlt className="text-primary" />
+                  ) : (
+                    <FaClipboardList />
+                  )}
+                </div>
+                <div className="inspection-info text-truncate">
+                  <h6 className="text-truncate">{insp.inspectionObjective}</h6>
+                  <span>
+                    {insp.inspectionDate} • {isFuture ? (
+                      <span className="text-warning fw-semibold">{t('project_view.scheduled_inspection')}</span>
+                    ) : (
+                      t('project_view.photos_count', { count: insp.images.length })
+                    )}
+                  </span>
+                </div>
               </div>
-              <div className="inspection-info text-truncate">
-                <h6 className="text-truncate">{insp.inspectionObjective}</h6>
-                <span>{insp.inspectionDate} • {t('project_view.photos_count', { count: insp.images.length })}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </aside>
 
@@ -556,6 +602,11 @@ const ProjectView: React.FC = () => {
                   <Badge bg="success" className="bg-opacity-10 text-success">
                     {activeInspection.inspectionType === 'Preventiva' ? t('project_view.modal_insp_type_preventive') : t('project_view.modal_insp_type_corrective')}
                   </Badge>
+                  {isInspectionFuture(activeInspection.inspectionDate) && (
+                    <Badge bg="warning" className="text-dark bg-opacity-75">
+                      {t('project_view.scheduled_inspection')}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-muted mb-0">
                   <FaChartLine className="me-1" /> {activeInspection.inspectionDate} • Resp: {activeInspection.inspectionResponsible}
@@ -565,6 +616,8 @@ const ProjectView: React.FC = () => {
                 <Button 
                   variant="primary" 
                   className="d-flex align-items-center gap-2"
+                  disabled={isInspectionFuture(activeInspection.inspectionDate)}
+                  title={isInspectionFuture(activeInspection.inspectionDate) ? t('project_view.scheduled_inspection_upload_blocked') : ''}
                   onClick={() => {
                     setSelectedFiles([]);
                     setProgress(0);
@@ -592,6 +645,15 @@ const ProjectView: React.FC = () => {
                 </Button>
               </div>
             </div>
+
+            {isInspectionFuture(activeInspection.inspectionDate) && (
+              <Alert variant="warning" className="d-flex align-items-center gap-2 mt-3 mb-4 animate__animated animate__fadeIn">
+                <FaCalendarAlt size={20} className="text-warning" />
+                <div>
+                  <strong>{t('project_view.scheduled_inspection')}:</strong> {t('project_view.scheduled_inspection_upload_blocked')}
+                </div>
+              </Alert>
+            )}
 
             {/* Seção de Ortomosaicos */}
             {activeInspection.orthoResults && activeInspection.orthoResults.length > 0 && (
@@ -734,6 +796,37 @@ const ProjectView: React.FC = () => {
                   onChange={e => e.target.files && setSelectedFiles(Array.from(e.target.files))}
                 />
               </div>
+
+              {duplicateFiles.length > 0 && (
+                <Alert variant="warning" className="border-0 rounded-4 my-3 d-flex align-items-center gap-2 animate__animated animate__fadeIn">
+                  <FaExclamationTriangle size={20} className="text-warning" />
+                  <div>
+                    <strong>{t('project_view.duplicate_warning_title')}:</strong>{' '}
+                    {t('project_view.duplicate_warning_desc')}
+                  </div>
+                </Alert>
+              )}
+
+              {selectedFiles.length > 0 && (
+                <div className="mt-3 selected-files-list text-start" style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #eee', padding: '10px', borderRadius: '8px' }}>
+                  <div className="text-muted small mb-2 fw-semibold">{t('project_view.selected_files_list')}</div>
+                  {selectedFiles.map((file, index) => {
+                    const isDuplicate = duplicateFiles.includes(file);
+                    return (
+                      <div key={index} className="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <span className={`text-truncate small ${isDuplicate ? 'text-warning fw-semibold' : ''}`} style={{ maxWidth: '80%' }}>
+                          {file.name} {isDuplicate && ` (${t('project_view.duplicate_label')})`}
+                        </span>
+                        {isDuplicate && (
+                          <Badge bg="warning" className="text-dark bg-opacity-75 small">
+                            {t('project_view.duplicate_badge')}
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
  
               <Button 
                 variant="primary" 

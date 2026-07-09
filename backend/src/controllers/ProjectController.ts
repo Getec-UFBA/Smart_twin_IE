@@ -1,5 +1,15 @@
 import { Request, Response } from 'express';
-import { randomUUID } from 'crypto';
+import crypto, { randomUUID } from 'crypto';
+
+function getFileMd5(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('md5');
+    const stream = fsSync.createReadStream(filePath);
+    stream.on('data', data => hash.update(data));
+    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('error', err => reject(err));
+  });
+}
 import path from 'path';
 import fs from 'fs/promises';
 import fsSync from 'fs';
@@ -11,6 +21,19 @@ import ReportService from '../services/ReportService';
 import { IDetection, IImage } from '../models/IProject';
 import uploadConfig from '../config/upload';
 import busboy from 'busboy';
+
+function isFutureDate(dateStr: string): boolean {
+  try {
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    return dateStr > todayStr;
+  } catch (error) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const inspDate = new Date(year, month - 1, day);
+    return inspDate > today;
+  }
+}
 
 // Interfaces for the review flow
 interface IPendingReviewImage {
@@ -85,6 +108,33 @@ class ProjectController {
         const imageProcessingService = new ImageProcessingService();
         const projectService = new ProjectService();
         const isDirectSave = !!(projectId && inspectionId);
+        let inspection: any = null;
+
+        if (isDirectSave) {
+          const projectRepository = new ProjectRepository();
+          const project = await projectRepository.findById(projectId);
+          inspection = project?.inspections?.find(i => i.id === inspectionId);
+          if (!project || !inspection) {
+            for (const file of files) {
+              await fs.unlink(file.path).catch(() => {});
+            }
+            if (!res.headersSent) {
+              return res.status(404).json({ error: !project ? 'Projeto não encontrado.' : 'Inspeção não encontrada.' });
+            }
+            return;
+          }
+          if (isFutureDate(inspection.inspectionDate)) {
+            for (const file of files) {
+              await fs.unlink(file.path).catch(() => {});
+            }
+            console.log('[ProjectController] Data futura! inspeção agendada');
+            if (!res.headersSent) {
+              return res.status(400).json({ error: 'Data futura! inspeção agendada' });
+            }
+            return;
+          }
+        }
+
         const reviewId = !isDirectSave ? randomUUID() : null;
         const reviewDir = reviewId ? path.join(uploadConfig.reviewsDirectory, reviewId) : null;
         
@@ -92,6 +142,7 @@ class ProjectController {
           await fs.mkdir(reviewDir, { recursive: true });
         }
 
+        const warnings: string[] = [];
         const errors: { fileName: string; error: string }[] = [];
         let processedCount = 0;
 
@@ -99,6 +150,22 @@ class ProjectController {
         for (const file of files) {
           try {
             console.log(`[ProjectController] Processando arquivo: ${file.originalname}`);
+
+            // Detecta duplicatas
+            if (isDirectSave) {
+              const fileHash = await getFileMd5(file.path);
+              const isDuplicate = inspection?.images?.some((img: any) => 
+                img.hash === fileHash || 
+                img.originalName?.toLowerCase() === file.originalname.toLowerCase()
+              );
+              if (isDuplicate) {
+                console.log(`[ProjectController] Arquivo duplicado ignorado: ${file.originalname}`);
+                warnings.push(`O arquivo "${file.originalname}" foi ignorado pois já existe nesta inspeção.`);
+                await fs.unlink(file.path).catch(() => {});
+                continue;
+              }
+            }
+
             const { processedImageBase64, detections } = await this.getProcessedImageData(file.path, imageProcessingService);
             
             if (isDirectSave) {
@@ -129,7 +196,13 @@ class ProjectController {
 
         if (processedCount === 0) {
           if (!res.headersSent) {
-            return res.status(500).json({ message: 'Todos os arquivos falharam ao processar.', errors });
+            if (warnings.length > 0 && errors.length === 0) {
+              return res.status(200).json({
+                message: 'Nenhum arquivo novo processado (arquivos duplicados ignorados).',
+                warnings
+              });
+            }
+            return res.status(500).json({ message: 'Todos os arquivos falharam ao processar.', errors, warnings });
           }
           return;
         }
@@ -139,6 +212,7 @@ class ProjectController {
             message: isDirectSave ? `Sucesso: ${processedCount} imagens processadas.` : 'Imagens aguardando revisão.',
             reviewId,
             errors: errors.length > 0 ? errors : undefined,
+            warnings: warnings.length > 0 ? warnings : undefined,
           });
         }
       } catch (err) {
@@ -202,6 +276,25 @@ class ProjectController {
 
           if (!uploadedFile || !projectId || !inspectionId) {
             if (!res.headersSent) res.status(400).json({ error: 'Dados incompletos no upload.' });
+            return;
+          }
+
+          const projectRepository = new ProjectRepository();
+          const project = await projectRepository.findById(projectId);
+          const inspection = project?.inspections?.find(i => i.id === inspectionId);
+          if (!project || !inspection) {
+            if (uploadedFile) await fs.unlink(uploadedFile.path).catch(() => {});
+            if (!res.headersSent) {
+              return res.status(404).json({ error: !project ? 'Projeto não encontrado.' : 'Inspeção não encontrada.' });
+            }
+            return;
+          }
+          if (isFutureDate(inspection.inspectionDate)) {
+            if (uploadedFile) await fs.unlink(uploadedFile.path).catch(() => {});
+            console.log('[ProjectController] Data futura! inspeção agendada');
+            if (!res.headersSent) {
+              return res.status(400).json({ error: 'Data futura! inspeção agendada' });
+            }
             return;
           }
 
@@ -295,6 +388,7 @@ class ProjectController {
         url: `https://storage.googleapis.com/${bucket.name}/${orthoStoragePath}`,
         previewUrl: `https://storage.googleapis.com/${bucket.name}/${previewStoragePath}`,
         detections: detections.map((d: any) => ({ ...d, id: randomUUID() })),
+        originalName: filename,
       };
 
       await projectService.addOrthoResultsToInspection({ projectId, inspectionId, orthoResults: [orthoResult] });
@@ -364,6 +458,17 @@ class ProjectController {
       return res.status(400).json({ error: 'ID do projeto e ID da inspeção são obrigatórios.' });
     }
 
+    const projectRepository = new ProjectRepository();
+    const project = await projectRepository.findById(projectId);
+    const inspection = project?.inspections?.find(i => i.id === inspectionId);
+    if (!project || !inspection) {
+      return res.status(404).json({ error: !project ? 'Projeto não encontrado.' : 'Inspeção não encontrada.' });
+    }
+    if (isFutureDate(inspection.inspectionDate)) {
+      console.log('[ProjectController] Data futura! inspeção agendada');
+      return res.status(400).json({ error: 'Data futura! inspeção agendada' });
+    }
+
     const reviewDir = path.join(uploadConfig.reviewsDirectory, reviewId);
     const projectService = new ProjectService();
 
@@ -377,7 +482,23 @@ class ProjectController {
         const tempJsonPath = path.join(reviewDir, `${imageId}.json`);
         
         const jsonContent = await fs.readFile(tempJsonPath, 'utf-8');
-        const { detections } = JSON.parse(jsonContent);
+        const { detections, originalFileName } = JSON.parse(jsonContent);
+
+        const fileBuffer = await fs.readFile(tempImagePath);
+        const fileHash = crypto.createHash('md5').update(fileBuffer).digest('hex');
+        const fileSize = fileBuffer.length;
+
+        const isDuplicate = inspection?.images?.some(img => 
+          img.hash === fileHash || 
+          img.originalName?.toLowerCase() === originalFileName?.toLowerCase()
+        );
+
+        if (isDuplicate) {
+          console.log(`[ProjectController] saveReview: ignorando duplicado: ${originalFileName}`);
+          await fs.unlink(tempImagePath).catch(() => {});
+          await fs.unlink(tempJsonPath).catch(() => {});
+          continue;
+        }
 
         const finalFileName = `${imageId}.jpeg`;
         const finalDir = path.resolve(uploadConfig.projectsDirectory, '..', 'processed_images', projectId, inspectionId);
@@ -389,6 +510,9 @@ class ProjectController {
         const newImage: IImage = {
           url: `/files/processed_images/${projectId}/${inspectionId}/${finalFileName}`,
           detections: detections,
+          originalName: originalFileName,
+          hash: fileHash,
+          size: fileSize,
         };
         await projectService.addImagesToInspection({ projectId, inspectionId, images: [newImage] });
       }
@@ -619,6 +743,17 @@ class ProjectController {
 
     if (!projectId || !inspectionId || !imageData) {
       return res.status(400).json({ error: 'ID do projeto, ID da inspeção e dados da imagem são obrigatórios.' });
+    }
+
+    const projectRepository = new ProjectRepository();
+    const project = await projectRepository.findById(projectId);
+    const inspection = project?.inspections?.find(i => i.id === inspectionId);
+    if (!project || !inspection) {
+      return res.status(404).json({ error: !project ? 'Projeto não encontrado.' : 'Inspeção não encontrada.' });
+    }
+    if (isFutureDate(inspection.inspectionDate)) {
+      console.log('[ProjectController] Data futura! inspeção agendada');
+      return res.status(400).json({ error: 'Data futura! inspeção agendada' });
     }
 
     const projectService = new ProjectService();

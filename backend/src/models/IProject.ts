@@ -33,12 +33,17 @@ export interface IGeoDetection {
 export interface IImage {
   url: string;
   detections?: IDetection[];
+  originalName?: string;
+  hash?: string;
+  size?: number;
 }
 
 export interface IOrthoResult {
   url: string;
   previewUrl?: string;
   detections: IGeoDetection[];
+  originalName?: string;
+  hash?: string;
 }
 
 // Nova interface IInspection (substitui IFolder)

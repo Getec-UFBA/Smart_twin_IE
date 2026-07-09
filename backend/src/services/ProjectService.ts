@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import crypto from 'crypto';
 import { storage } from '../config/firebase';
 import ProjectRepository from '../repositories/ProjectRepository';
 import { IProject, IOAE, IInspection, IDetection, IImage, IOrthoResult } from '../models/IProject';
@@ -326,6 +327,8 @@ class ProjectService {
     const base64Data = imageData.replace(/^data:image\/jpeg;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, 'base64');
     const newFileName = `${uuidv4()}.jpg`;
+    const hash = crypto.createHash('md5').update(imageBuffer).digest('hex');
+    const size = imageBuffer.length;
 
     const storagePath = `projects/${projectId}/inspections/${inspectionId}/images/${newFileName}`;
     const file = this.bucket.file(storagePath);
@@ -340,6 +343,9 @@ class ProjectService {
     const newImage: IImage = {
       url: publicUrl,
       detections,
+      originalName: newFileName,
+      hash,
+      size,
     };
 
     await this.addImagesToInspection({ projectId, inspectionId, images: [newImage] });
@@ -367,6 +373,8 @@ class ProjectService {
     const imageBuffer = Buffer.from(base64Data, 'base64');
     const fileExtension = path.extname(originalFileName);
     const newFileName = `${uuidv4()}${fileExtension}`;
+    const hash = crypto.createHash('md5').update(imageBuffer).digest('hex');
+    const size = imageBuffer.length;
   
     const storagePath = `projects/${projectId}/inspections/${inspectionId}/images/${newFileName}`;
     const file = this.bucket.file(storagePath);
@@ -381,6 +389,9 @@ class ProjectService {
     const newImage: IImage = {
       url: publicUrl,
       detections,
+      originalName: originalFileName,
+      hash,
+      size,
     };
   
     await this.addImagesToInspection({ projectId, inspectionId, images: [newImage] });
