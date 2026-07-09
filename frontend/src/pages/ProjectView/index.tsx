@@ -8,8 +8,8 @@ import path from 'path-browserify';
 import { 
   FaCog, FaTrash, FaUpload, FaDownload, 
   FaClipboardList, FaProjectDiagram, FaMapMarkedAlt, 
-  FaImages, FaChartLine, FaPlus, FaCloudUploadAlt, FaTools,
-  FaChevronLeft, FaChevronRight, FaHammer 
+  FaImages, FaChartLine, FaPlus, FaMinus, FaCloudUploadAlt, FaTools,
+  FaChevronLeft, FaChevronRight, FaHammer, FaSyncAlt
 } from 'react-icons/fa';
 import type { IProject, IInspection } from '../../models/IProject';
 import MaintenanceFeedback from '../../components/MaintenanceFeedback';
@@ -27,6 +27,8 @@ const ProjectView: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [progressStatus, setProgressStatus] = useState('');
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Controle de Visualização
   const [activeInspection, setActiveInspection] = useState<IInspection | null>(null);
@@ -46,6 +48,65 @@ const ProjectView: React.FC = () => {
   
   // Navegação de Imagens Expandidas
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
+
+  // Zoom e Pan para Visualização de Imagem
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const zoomContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Reseta zoom ao fechar ou trocar de imagem
+  useEffect(() => {
+    setZoomScale(1);
+    setZoomPosition({ x: 0, y: 0 });
+    setIsPanning(false);
+  }, [expandedImageIndex]);
+
+  // Hook para capturar wheel event com passive: false (evita scroll da página ao dar zoom com mouse wheel)
+  useEffect(() => {
+    const container = zoomContainerRef.current;
+    if (!container) return;
+
+    const preventDefaultWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomIntensity = 0.15;
+      
+      setZoomScale(prevScale => {
+        let newScale = prevScale + (e.deltaY < 0 ? zoomIntensity : -zoomIntensity);
+        newScale = Math.min(Math.max(1, newScale), 8);
+        if (newScale === 1) {
+          setZoomPosition({ x: 0, y: 0 });
+        }
+        return newScale;
+      });
+    };
+
+    container.addEventListener('wheel', preventDefaultWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', preventDefaultWheel);
+    };
+  }, [expandedImageIndex]);
+
+  // Handlers para pan (arrastar a imagem)
+  const handleMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (zoomScale === 1) return;
+    e.preventDefault();
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - zoomPosition.x, y: e.clientY - zoomPosition.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    const newX = e.clientX - panStart.x;
+    const newY = e.clientY - panStart.y;
+    setZoomPosition({ x: newX, y: newY });
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsPanning(false);
+  };
 
   const fetchProject = useCallback(async () => {
     try {
@@ -176,8 +237,29 @@ const ProjectView: React.FC = () => {
     }, speed);
   };
 
+  const handleCancelProcessing = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+    }
+    setProcessing(false);
+    setProgress(0);
+    setProgressStatus('');
+  };
+
   const handleProcess = async () => {
     if (selectedFiles.length === 0 || !project || !activeInspection) return;
+    
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    
     setProcessing(true);
     setProgress(0);
     setProgressStatus(t('project_view.progress_starting'));
@@ -189,6 +271,7 @@ const ProjectView: React.FC = () => {
         const totalFiles = selectedFiles.length;
 
         for (let i = 0; i < totalFiles; i++) {
+          if (controller.signal.aborted) break;
           const file = selectedFiles[i];
           const formData = new FormData();
           formData.append('images', file);
@@ -199,6 +282,7 @@ const ProjectView: React.FC = () => {
           
           try {
             await api.post('/projects/process-images', formData, {
+              signal: controller.signal,
               onUploadProgress: (progressEvent: any) => {
                 const filePercent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
                 const totalPercent = Math.round(((successCount + failCount) * 100 + (filePercent * 0.9)) / totalFiles);
@@ -206,17 +290,30 @@ const ProjectView: React.FC = () => {
               }
             });
             successCount++;
-          } catch (err) {
+          } catch (err: any) {
+            if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+              console.log('Upload de imagens cancelado.');
+              break;
+            }
             console.error(`Falha ao processar ${file.name}:`, err);
             failCount++;
           }
           
+          if (controller.signal.aborted) break;
           setProgress(Math.round(((successCount + failCount) * 100) / totalFiles));
           
           if (i < totalFiles - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise<void>(resolve => {
+              const timeoutId = setTimeout(resolve, 1500);
+              controller.signal.addEventListener('abort', () => {
+                clearTimeout(timeoutId);
+                resolve();
+              });
+            });
           }
         }
+
+        if (controller.signal.aborted) return;
 
         if (successCount > 0) {
           setProgress(100);
@@ -242,6 +339,7 @@ const ProjectView: React.FC = () => {
         const currentOrthoCount = activeInspection.orthoResults?.length || 0;
 
         const config = {
+          signal: controller.signal,
           onUploadProgress: (progressEvent: any) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setProgress(percentCompleted * 0.4); 
@@ -257,6 +355,8 @@ const ProjectView: React.FC = () => {
 
         await api.post('/projects/process-ortho', formData, config);
         
+        if (controller.signal.aborted) return;
+
         setProgressStatus('A IA está recebendo o arquivo...');
         setProgress(95);
         
@@ -266,7 +366,12 @@ const ProjectView: React.FC = () => {
         const pollInterval = setInterval(async () => {
           attempts++;
           try {
-            const response = await api.get(`/projects/${project.id}`);
+            if (controller.signal.aborted) {
+              clearInterval(pollInterval);
+              pollIntervalRef.current = null;
+              return;
+            }
+            const response = await api.get(`/projects/${project.id}`, { signal: controller.signal });
             const updatedProject = response.data;
             const updatedInspection = updatedProject.inspections?.find((i: any) => i.id === activeInspection.id);
             
@@ -279,6 +384,7 @@ const ProjectView: React.FC = () => {
 
             if (newOrthoCount > currentOrthoCount) {
               clearInterval(pollInterval);
+              pollIntervalRef.current = null;
               setProject(updatedProject);
               setProgress(100);
               setProgressStatus('Processamento concluído com sucesso!');
@@ -289,22 +395,37 @@ const ProjectView: React.FC = () => {
               }, 2500);
             } else if (attempts >= maxAttempts) {
               clearInterval(pollInterval);
+              pollIntervalRef.current = null;
               setProgressStatus('Tempo esgotado. Verifique a dashboard em instantes.');
               setTimeout(() => {
                 setProcessing(false);
                 setShowUploadModal(false);
               }, 6000);
             }
-          } catch (err) {
+          } catch (err: any) {
+            if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+              clearInterval(pollInterval);
+              pollIntervalRef.current = null;
+              return;
+            }
             console.error('Polling error:', err);
           }
         }, 5000); // Polling mais rápido (5s) para pegar os status da IA
+        pollIntervalRef.current = pollInterval;
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+        console.log('Processamento cancelado pelo usuário.');
+        return;
+      }
       console.error('Erro no processamento:', err);
       alert(t('project_view.error_process'));
       setProcessing(false);
       setProgress(0);
+    } finally {
+      if (!controller.signal.aborted) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -545,7 +666,19 @@ const ProjectView: React.FC = () => {
       </main>
 
       {/* MODAL DE UPLOAD / PROCESSAMENTO */}
-      <Modal show={showUploadModal} onHide={() => !processing && setShowUploadModal(false)} centered size="lg">
+      <Modal 
+        show={showUploadModal} 
+        onHide={() => {
+          if (!processing) {
+            setShowUploadModal(false);
+            setSelectedFiles([]);
+          }
+        }} 
+        backdrop={processing ? 'static' : true}
+        keyboard={!processing}
+        centered 
+        size="lg"
+      >
         <Modal.Header closeButton={!processing}>
           <Modal.Title className="fw-bold">{t('project_view.modal_upload_title')}</Modal.Title>
         </Modal.Header>
@@ -555,7 +688,7 @@ const ProjectView: React.FC = () => {
               <Alert variant="info" className="border-0 rounded-4 mb-4">
                 {t('project_view.modal_upload_alert')} <strong>{activeInspection?.inspectionObjective}</strong>
               </Alert>
-
+ 
               <Form.Group className="mb-4 text-center">
                 <div className="d-flex justify-content-center gap-4">
                   <Form.Check
@@ -563,18 +696,24 @@ const ProjectView: React.FC = () => {
                     label={t('project_view.modal_p_type_images')}
                     name="pType"
                     checked={processingType === 'images'}
-                    onChange={() => setProcessingType('images')}
+                    onChange={() => {
+                      setProcessingType('images');
+                      setSelectedFiles([]);
+                    }}
                   />
                   <Form.Check
                     type="radio"
                     label={t('project_view.modal_p_type_ortho')}
                     name="pType"
                     checked={processingType === 'ortho'}
-                    onChange={() => setProcessingType('ortho')}
+                    onChange={() => {
+                      setProcessingType('ortho');
+                      setSelectedFiles([]);
+                    }}
                   />
                 </div>
               </Form.Group>
-
+ 
               <div 
                 className="p-5 border-2 border-dashed rounded-4 text-center bg-light"
                 style={{ border: '2px dashed #10b98144', cursor: 'pointer' }}
@@ -595,7 +734,7 @@ const ProjectView: React.FC = () => {
                   onChange={e => e.target.files && setSelectedFiles(Array.from(e.target.files))}
                 />
               </div>
-
+ 
               <Button 
                 variant="primary" 
                 className="w-100 mt-4 py-2 fw-bold"
@@ -615,11 +754,18 @@ const ProjectView: React.FC = () => {
                 variant="success" 
                 style={{ height: '25px', borderRadius: '10px' }} 
               />
-              <p className="text-muted mt-3 small">
+              <p className="text-muted mt-3 mb-4 small">
                 {processingType === 'ortho' 
                   ? t('project_view.modal_process_ortho_tip') 
                   : t('project_view.modal_process_images_tip')}
               </p>
+              <Button 
+                variant="danger" 
+                className="px-4 py-2 fw-bold"
+                onClick={handleCancelProcessing}
+              >
+                {t('project_view.modal_cancel_process')}
+              </Button>
             </div>
           )}
         </Modal.Body>
@@ -688,11 +834,78 @@ const ProjectView: React.FC = () => {
                 <FaChevronLeft size={40} className="text-white opacity-50 hover-opacity-100" />
               </button>
 
-              <img 
-                src={activeInspection.images[expandedImageIndex].url} 
-                style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} 
-                alt="Fullscreen" 
-              />
+              <div 
+                ref={zoomContainerRef}
+                className="overflow-hidden position-relative w-100 d-flex align-items-center justify-content-center"
+                style={{ height: '85vh', cursor: zoomScale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
+              >
+                <img 
+                  src={activeInspection.images[expandedImageIndex].url} 
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '85vh', 
+                    objectFit: 'contain',
+                    transform: `translate(${zoomPosition.x}px, ${zoomPosition.y}px) scale(${zoomScale})`,
+                    transition: isPanning ? 'none' : 'transform 0.15s ease-out',
+                    userSelect: 'none'
+                  }} 
+                  alt="Fullscreen"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUpOrLeave}
+                  onMouseLeave={handleMouseUpOrLeave}
+                  draggable={false}
+                />
+              </div>
+
+              {/* Controle Flutuante de Zoom */}
+              <div 
+                className="position-absolute d-flex gap-2 p-2 bg-dark bg-opacity-75 rounded-pill shadow"
+                style={{ bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 12 }}
+              >
+                <Button 
+                  variant="outline-light" 
+                  size="sm" 
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(255,255,255,0.1)' }}
+                  onClick={() => {
+                    const newScale = Math.min(zoomScale + 0.5, 8);
+                    setZoomScale(newScale);
+                  }}
+                  title={t('project_view.zoom_in')}
+                >
+                  <FaPlus size={14} />
+                </Button>
+                <Button 
+                  variant="outline-light" 
+                  size="sm" 
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(255,255,255,0.1)' }}
+                  onClick={() => {
+                    const newScale = Math.max(zoomScale - 0.5, 1);
+                    if (newScale === 1) setZoomPosition({ x: 0, y: 0 });
+                    setZoomScale(newScale);
+                  }}
+                  disabled={zoomScale === 1}
+                  title={t('project_view.zoom_out')}
+                >
+                  <FaMinus size={14} />
+                </Button>
+                <Button 
+                  variant="outline-light" 
+                  size="sm" 
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(255,255,255,0.1)' }}
+                  onClick={() => {
+                    setZoomScale(1);
+                    setZoomPosition({ x: 0, y: 0 });
+                  }}
+                  disabled={zoomScale === 1 && zoomPosition.x === 0 && zoomPosition.y === 0}
+                  title={t('project_view.zoom_reset')}
+                >
+                  <FaSyncAlt size={14} />
+                </Button>
+              </div>
 
               {/* Botão Próximo */}
               <button 
