@@ -258,6 +258,7 @@ class ReportService {
       ? targetInspection.inspectionDate.split('-').reverse().join('').substring(2)
       : '160526';
     const shortId = `A${dateFormatted}`;
+    const inspectionDateFormatted = formatDatePt(targetInspection?.inspectionDate);
 
     const isFacade = project.type?.toLowerCase().includes('fachada') || 
                     inspectionsToReport.some(ins => ins.inspectionType?.toLowerCase().includes('fachada'));
@@ -789,7 +790,7 @@ class ReportService {
                       <div class="info-item"><strong>Piloto do drone:</strong> ${targetInspection?.inspectionResponsible || 'Alisson'}</div>
                       <div class="info-item"><strong>Observador:</strong> Matheus</div>
                       <div class="info-item"><strong>Responsável pela unidade:</strong> ${project.unitDirector || 'Nome'}</div>
-                      <div class="info-item"><strong>Contato do responsável:</strong> ${project.unitDirectorContact || '(71) 99999-9999'}</div>
+                      <div class="info-item"><strong>Contato do responsável:</strong> (71) 99999-9999</div>
                       <div class="info-item"><strong>Solicitante da SUMAI:</strong> ${project.responsible || 'Jadi Ventin'}</div>
                   </div>
 
