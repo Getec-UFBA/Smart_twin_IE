@@ -82,18 +82,23 @@ class ReportService {
 
     console.log(`[ReportService] HTML salvo em ${tempFilePath}, iniciando Puppeteer...`);
 
+    const puppeteerArgs = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-zygote'
+    ];
+
+    if (process.platform !== 'darwin' && process.platform !== 'win32') {
+      puppeteerArgs.push('--single-process');
+    }
+
     // Configurações otimizadas para ambientes Serverless (Cloud Functions)
     const browser = await puppeteer.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process'
-      ]
+      args: puppeteerArgs
     });
 
     try {
