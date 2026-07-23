@@ -316,11 +316,6 @@ class ReportService {
                   <div class="logos">UFBA | GETEC</div>
                   <div class="title">${reportTitle}</div>
                 </div>
-                <div class="header-wave">
-                  <svg viewBox="0 0 500 80" preserveAspectRatio="none" style="height: 50px; width: 100%; display: block;">
-                    <path d="M0,0 C150,90 350,-40 500,70 L500,80 L0,80 Z" fill="#ffffff"></path>
-                  </svg>
-                </div>
               </div>
 
               <!-- CONTENT -->
@@ -429,11 +424,6 @@ class ReportService {
                   <div class="logos">UFBA | GETEC</div>
                   <div class="title">${reportTitle}</div>
                 </div>
-                <div class="header-wave">
-                  <svg viewBox="0 0 500 80" preserveAspectRatio="none" style="height: 50px; width: 100%; display: block;">
-                    <path d="M0,0 C150,90 350,-40 500,70 L500,80 L0,80 Z" fill="#ffffff"></path>
-                  </svg>
-                </div>
               </div>
 
               <!-- CONTENT -->
@@ -537,12 +527,13 @@ class ReportService {
               .report-header {
                 background: linear-gradient(135deg, #07073b 0%, #0d0f57 100%);
                 position: relative;
-                padding: 20px 40px 35px 40px;
+                padding: 18px 40px;
                 color: white;
-                height: 50px;
+                min-height: 60px;
                 display: flex;
                 align-items: center;
                 box-sizing: border-box;
+                width: 100%;
               }
               .header-content {
                 width: 100%;
@@ -556,22 +547,16 @@ class ReportService {
                 font-weight: 800;
                 letter-spacing: 1px;
                 color: #ffffff;
+                white-space: nowrap;
               }
               .report-header .title {
                 font-size: 13px;
                 font-weight: 700;
                 letter-spacing: 0.5px;
                 text-align: right;
-                max-width: 60%;
-                opacity: 0.9;
-              }
-              .header-wave {
-                position: absolute;
-                bottom: -1px;
-                left: 0;
-                width: 100%;
-                line-height: 0;
-                z-index: 5;
+                max-width: 65%;
+                opacity: 0.95;
+                line-height: 1.3;
               }
 
               /* FOOTER DO RELATÓRIO */
@@ -773,11 +758,6 @@ class ReportService {
                 <div class="header-content">
                   <div class="logos">UFBA | GETEC</div>
                   <div class="title">${reportTitle}</div>
-                </div>
-                <div class="header-wave">
-                  <svg viewBox="0 0 500 80" preserveAspectRatio="none" style="height: 50px; width: 100%; display: block;">
-                    <path d="M0,0 C150,90 350,-40 500,70 L500,80 L0,80 Z" fill="#ffffff"></path>
-                  </svg>
                 </div>
               </div>
 
