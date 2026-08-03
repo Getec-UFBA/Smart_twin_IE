@@ -18,7 +18,7 @@ cleanup() {
 # Trap exit signals to run cleanup
 trap cleanup EXIT SIGINT SIGTERM
 
-# 1. Iniciar o serviço de IA (Python/YOLO)
+# 1. Iniciar o serviço de IA (Python/YOLO) aqui
 echo "[1/3] Iniciando IA Service (Porta 8001)..."
 (cd "$SCRIPT_DIR/ai-service" && . venv/bin/activate && uvicorn main:app --port 8001) &
 AI_PID=$!
