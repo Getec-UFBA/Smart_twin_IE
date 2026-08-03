@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 import os
-
+#o
 # Caminhos dos modelos
 script_dir = os.path.dirname(os.path.realpath(__file__))
 # Atualizado para o novo modelo padrão
