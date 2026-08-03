@@ -34,8 +34,19 @@ const Layout: React.FC = () => {
   };
 
   return (
-    <div className="d-flex min-vh-100">
-      {!isProjectViewPage && <Sidebar isOpen={sidebarIsOpen} toggleSidebar={toggleSidebar} isAdmin={user?.role === 'admin'} />}
+    <div className="d-flex min-vh-100 position-relative">
+      {!isProjectViewPage && (
+        <>
+          <Sidebar isOpen={sidebarIsOpen} toggleSidebar={toggleSidebar} isAdmin={user?.role === 'admin'} />
+          {sidebarIsOpen && (
+            <div 
+              className="sidebar-backdrop d-md-none" 
+              onClick={toggleSidebar}
+              aria-hidden="true"
+            />
+          )}
+        </>
+      )}
       
       <div className={getMainContentClassName()}>
         <Navbar bg="dark" expand={false} variant="dark" fixed="top">

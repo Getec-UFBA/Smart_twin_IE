@@ -595,9 +595,9 @@ const ProjectView: React.FC = () => {
         ) : (
           /* VISUALIZAÇÃO DA INSPEÇÃO ATIVA */
           <div className="animate__animated animate__fadeIn">
-            <div className="d-flex justify-content-between align-items-start project-header-panel">
-              <div>
-                <div className="d-flex align-items-center gap-2 mb-1">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 project-header-panel">
+              <div className="header-info-group">
+                <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
                   <h3 className="fw-bold mb-0">{activeInspection.inspectionObjective}</h3>
                   <Badge bg="success" className="bg-opacity-10 text-success">
                     {activeInspection.inspectionType === 'Preventiva' ? t('project_view.modal_insp_type_preventive') : t('project_view.modal_insp_type_corrective')}
@@ -612,10 +612,9 @@ const ProjectView: React.FC = () => {
                   <FaChartLine className="me-1" /> {activeInspection.inspectionDate} • Resp: {activeInspection.inspectionResponsible}
                 </p>
               </div>
-              <div className="d-flex gap-2">
+              <div className="project-action-buttons">
                 <Button 
                   variant="primary" 
-                  className="d-flex align-items-center gap-2"
                   disabled={isInspectionFuture(activeInspection.inspectionDate)}
                   title={isInspectionFuture(activeInspection.inspectionDate) ? t('project_view.scheduled_inspection_upload_blocked') : ''}
                   onClick={() => {
@@ -631,16 +630,15 @@ const ProjectView: React.FC = () => {
                   onClick={() => handleGenerateInspectionPdfReport(activeInspection.id)}
                   disabled={isGeneratingReport}
                 >
-                  {isGeneratingReport ? t('project_view.generating') : <><FaDownload className="me-2" /> PDF</>}
+                  {isGeneratingReport ? t('project_view.generating') : <><FaDownload /> PDF</>}
                 </Button>
                 <Button 
                   variant="outline-success" 
-                  className="d-flex align-items-center gap-2"
                   onClick={() => setShowMaintenanceModal(true)}
                 >
                   <FaHammer /> {t('project_view.maintenance', 'Manutenção')}
                 </Button>
-                <Button variant="outline-danger" onClick={() => handleDeleteInspection(activeInspection.id)}>
+                <Button variant="outline-danger" onClick={() => handleDeleteInspection(activeInspection.id)} title={t('project_view.delete_insp', 'Excluir Inspeção')}>
                   <FaTrash />
                 </Button>
               </div>

@@ -160,3 +160,19 @@
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
+
+@media (max-width: 576px) {
+  .login-container {
+    padding: 12px;
+  }
+
+  .login-box {
+    padding: 28px 20px;
+    border-radius: 20px;
+  }
+
+  .login-logo-header {
+    margin-bottom: 24px;
+  }
+}
+

@@ -193,6 +193,19 @@ body.dark .access-banner .btn-cta:hover {
 
 @media (max-width: 992px) {
   .platform-title { font-size: 3.5rem !important; }
-  .access-banner { flex-direction: column; text-align: center; padding: 40px 24px; }
+  .subtitle-home { font-size: 1.75rem !important; }
+  .hero-section { padding: 48px 0; margin-bottom: 40px !important; }
+  .access-banner { flex-direction: column; text-align: center; padding: 36px 24px; gap: 24px; }
+  .about-getec-section { padding: 36px 24px; border-radius: 24px; }
   .btn-cta { width: 100%; }
 }
+
+@media (max-width: 576px) {
+  .platform-title { font-size: 2.25rem !important; }
+  .subtitle-home { font-size: 1.2rem !important; margin-top: 10px; }
+  .section-title { font-size: 1.75rem; margin-bottom: 32px; }
+  .home-logo { max-width: 200px; }
+  .access-banner { padding: 28px 16px; border-radius: 20px; }
+  .about-getec-section { padding: 24px 16px; border-radius: 20px; }
+}
+
