@@ -1,10 +1,10 @@
 FROM python:3.9-slim
 
-# Evita que o Python gere arquivos .pyc e permite logs em tempo real
+# evita que o Python gere arquivos .pyc e permite logs em tempo real
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Instala dependências do sistema necessárias para OpenCV, Rasterio e processamento de imagem
+# instala dependências do sistema necessárias para OpenCV, Rasterio e processamento de imagem
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \

@@ -20,7 +20,7 @@ trap cleanup EXIT SIGINT SIGTERM
 
 # 1. Iniciar o serviço de IA (Python/YOLO) aqui
 echo "[1/3] Iniciando IA Service (Porta 8001)..."
-(cd "$SCRIPT_DIR/ai-service" && . venv/bin/activate && uvicorn main:app --port 8001) &
+(cd "$SCRIPT_DIR/ai-service" && { [ -f venv/bin/activate ] && . venv/bin/activate || true; } && uvicorn main:app --host 0.0.0.0 --port 8001) &
 AI_PID=$!
 
 # 2. Iniciar o Backend (Node.js)

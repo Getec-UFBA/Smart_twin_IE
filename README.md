@@ -1,140 +1,143 @@
-# Smart Inspects Platform
+# Smart Twin IE Platform (Smart Inspects)
 
-Este projeto é uma plataforma web para visualização e gerenciamento de inspeções técnicas e gêmeos digitais, integrando um frontend React, um backend Node.js e um serviço de Inteligência Artificial (YOLO) em Python para processamento de imagens.
+Plataforma web para visualização, análise e gerenciamento de inspeções técnicas e gêmeos digitais de infraestrutura elétrica. O sistema integra um **frontend React (Vite)**, um **backend Node.js (Express/Firebase)** e um **serviço de Inteligência Artificial (FastAPI/YOLO)** em Python para detecção de anomalias e análise geoespacial de ortofotos.
 
-## 🏗️ Estrutura do Projeto
+---
 
-A estrutura foi reorganizada para facilitar a manutenção e escalabilidade:
+## 🏗️ Arquitetura do Sistema
+
+O projeto é dividido em três serviços principais dispostos no repositório:
+
+1. **`frontend/` (React + Vite)**: Interface do usuário para mapas interativos, exibição de gêmeos digitais, relatórios e gestão de inspeções. (Porta `5173`)
+2. **`backend/` (Node.js + Express + TypeScript)**: API central, autenticação, gerenciamento de relatórios (Puppeteer PDF), integração com o Firebase Firestore e Storage. (Porta `3001`)
+3. **`ai-service/` (Python + FastAPI + YOLOv8)**: Microserviço de visão computacional e análise geoespacial para identificação de componentes, defeitos e processamento de ortofotos GeoTIFF. (Porta `8001`)
+
+---
+
+## 🔒 Configuração das Variáveis de Ambiente (`.env`)
+
+Antes de iniciar a aplicação, verifique se os arquivos `.env` existem em suas respectivas pastas e se contêm as credenciais necessárias configuradas:
+
+### 1. Backend (`backend/.env`)
+Certifique-se de que o arquivo `backend/.env` existe e contém as seguintes variáveis de ambiente:
+
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
+- `FIREBASE_STORAGE_BUCKET`
+- `JWT_SECRET`
+- `PYTHON_SERVICE_URL`
+- `PORT`
+
+### 2. Frontend (`frontend/.env`)
+Certifique-se de que o arquivo `frontend/.env` existe e contém as seguintes variáveis de ambiente:
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+
+---
+
+## 📁 Estrutura de Diretórios
 
 ```text
-smart_inspects/
-├── frontend/             # Interface React (Vite) - Porta 5173
-├── backend/              # API Node.js (Express) - Porta 3001
-│   ├── db.json           # Banco de dados local (JSON Server)
-│   ├── public/uploads/   # Arquivos enviados e processados
-│   └── src/              # Código fonte da API
-├── ai-service/           # Serviço de IA (Python/FastAPI) - Porta 8001
-│   ├── models/           # Modelos YOLO (.pt)
-│   └── main.py           # API de processamento de imagem
-├── start.sh              # Script de inicialização rápida (Linux)
-└── start.bat              # Script de inicialização rápida (Windows)
+Smart_twin_IE/
+├── .devcontainer/        # Configuração do ambiente isolado de desenvolvimento (Docker)
+│   ├── Dockerfile        # Imagem base com Python 3.11, Node 22, GDAL, OpenCV e Puppeteer
+│   ├── devcontainer.json # Mapeamento de portas e extensões do VS Code
+│   └── post-create.sh    # Instalação automática de dependências no container
+├── frontend/             # Aplicação Web em React + Vite + TypeScript (Porta 5173)
+│   ├── src/              # Componentes, páginas, serviços e contexto
+│   └── vite.config.ts    # Configurações do Vite e servidor local
+├── backend/              # API REST em Node.js + Express + TypeScript (Porta 3001)
+│   ├── src/              # Rotas, controladores, serviços Firebase e PDF
+│   └── public/           # Arquivos estáticos e modelos de relatório
+├── ai-service/           # Microserviço de Inteligência Artificial em Python (Porta 8001)
+│   ├── main.py           # API FastAPI e rotas de inferência
+│   ├── ortho_processor.py# Processamento geoespacial de ortofotos (GDAL/Rasterio)
+│   ├── models/           # Modelos de detecção YOLO (.pt)
+│   └── requirements.txt  # Dependências Python
+├── start.sh              # Script de inicialização unificada para Linux/macOS/DevContainer
+├── start.bat             # Script de inicialização unificada para Windows
+└── deploy_fix.sh         # Script automatizado de deploy no Firebase (Functions + Hosting)
 ```
 
 ---
 
-## 🚀 Como Rodar o Projeto
+## 🚀 Como Executar o Projeto
 
-### Pré-requisitos
-*   **Node.js** (v20+)
-*   **Python** (v3.10+)
-*   **Git**
+### Opção A: Utilizando DevContainer (Recomendado)
+
+O projeto possui um ambiente pré-configurado via **Dev Containers (VS Code + Docker)** que instala automaticamente todas as dependências do sistema operacional (GDAL, C++, OpenCV, Puppeteer) e pacotes Node.js e Python.
+
+1. Instale o **Docker** e a extensão **Dev Containers** no VS Code.
+2. Abra a pasta do projeto no VS Code.
+3. Pressione `F1` e escolha **Dev Containers: Reopen in Container**.
+4. Aguarde a construção do container e a execução automática do script de pós-criação.
+5. No terminal integrado do VS Code, execute:
+   ```bash
+   ./start.sh
+   ```
+6. Acesse os serviços localmente:
+   - 🌐 **Frontend (React)**: [http://localhost:5173](http://localhost:5173)
+   - ⚡ **Backend API**: [http://localhost:3001](http://localhost:3001)
+   - 🤖 **AI Service**: [http://localhost:8001](http://localhost:8001)
 
 ---
 
-### 🐧 No Linux (Ubuntu/Debian)
+### Opção B: Instalação Manual (Sem Docker)
+
+#### Pré-requisitos
+- **Node.js**: v20 ou v22 LTS
+- **Python**: v3.10 ou v3.11
+- **GDAL e ferramentas C++**: Necessários no SO para compilação geoespacial.
 
 #### 1. Instalar Dependências
+
+No Linux / macOS:
 ```bash
-# Frontend
-cd frontend && npm install && cd ..
-
-# Backend
-cd backend && npm install && cd ..
-
-# AI Service
-cd ai-service
-python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
-cd ..
+bash .devcontainer/post-create.sh
 ```
 
-#### 2. Executar
-Você pode usar o script automatizado que inicia os 3 serviços simultaneamente:
+No Windows (CMD / PowerShell):
+```cmd
+cd frontend && npm install && cd ..
+cd backend && npm install && cd ..
+cd ai-service && python -m venv venv && .\venv\Scripts\activate && pip install -r requirements.txt && cd ..
+```
+
+#### 2. Iniciar Todos os Serviços
+
+No Linux / macOS / DevContainer:
 ```bash
-chmod +x start.sh
 ./start.sh
 ```
 
----
-
-### 🪟 No Windows
-
-#### 1. Instalar Dependências
-Abra o Prompt de Comando (CMD) ou PowerShell:
-
-**Frontend:**
-```cmd
-cd frontend
-npm install
-cd ..
-```
-
-**Backend:**
-```cmd
-cd backend
-npm install
-cd ..
-```
-
-**AI Service (Opção 1: Com Ambiente Virtual - Recomendado):**
-```cmd
-cd ai-service
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-cd ..
-```
-
-**AI Service (Opção 2: Sem Ambiente Virtual):**
-Se preferir não usar pasta virtual, instale as dependências diretamente:
-```cmd
-cd ai-service
-pip install -r requirements.txt
-cd ..
-```
-
-#### 2. Executar
-Basta clicar duas vezes no arquivo `start.bat` ou rodar via terminal:
+No Windows:
 ```cmd
 start.bat
 ```
 
 ---
 
-## 🛠️ Comandos Manuais (Caso necessário)
+## 🚀 Deploy no Firebase (Cloud Functions + Hosting)
 
-Se preferir rodar cada serviço em um terminal separado:
+Para atualizar o deploy em ambiente de produção (Firebase Cloud Functions para o backend e Firebase Hosting para o frontend React):
 
-| Serviço | Pasta | Comando | Porta |
+```bash
+chmod +x deploy_fix.sh
+./deploy_fix.sh
+```
+
+---
+
+## 📋 Resumo das Portas e Serviços
+
+| Serviço | Diretório | Tecnologia | Porta |
 | :--- | :--- | :--- | :--- |
-| **IA (Python)** | `ai-service` | `uvicorn main:app --port 8001` | 8001 |
-| **API (Node)** | `backend` | `npm run dev` | 3001 |
-| **Web (React)** | `frontend` | `npm run dev` | 5173 |
-
----
-
-## 📦 Dependências Principais
-
-### Frontend
-- **React 19 / Vite**: Framework e Build Tool.
-- **Axios**: Requisições HTTP.
-- **Bootstrap 5**: Estilização e componentes.
-- **React Router Dom**: Navegação entre páginas.
-
-### Backend
-- **Express**: Framework Web.
-- **Multer**: Upload de arquivos.
-- **Bcryptjs / JWT**: Autenticação e segurança.
-- **Puppeteer**: Geração de relatórios PDF.
-- **JSON Database**: Armazenamento em `db.json`.
-
-### IA Service
-- **FastAPI / Uvicorn**: Framework para API de alta performance.
-- **Ultralytics (YOLOv8)**: Detecção de objetos nas imagens.
-- **OpenCV**: Manipulação de imagens.
-
----
-
-## 📝 Notas Importantes
-- O banco de dados `db.json` **não deve ser apagado**, pois contém as configurações e cadastros do sistema.
-- Certifique-se de que as portas **3001, 5173 e 8001** estão liberadas em seu sistema.
+| **Frontend Web** | `frontend/` | React 19 + Vite | `5173` |
+| **Backend API** | `backend/` | Node.js + Express + Firebase Admin | `3001` |
+| **AI Service** | `ai-service/` | Python + FastAPI + YOLOv8 + GDAL | `8001` |

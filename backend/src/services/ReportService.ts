@@ -82,9 +82,17 @@ class ReportService {
 
     console.log(`[ReportService] HTML salvo em ${tempFilePath}, iniciando Puppeteer...`);
 
-    // Configurações otimizadas para ambientes Serverless (Cloud Functions)
+    // Detectar executável do Chrome/Chromium no sistema se não especificado
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ||
+      (fs.existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' :
+      (fs.existsSync('/usr/bin/google-chrome-stable') ? '/usr/bin/google-chrome-stable' :
+      (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' :
+      (fs.existsSync('/usr/bin/chromium-browser') ? '/usr/bin/chromium-browser' : undefined))));
+
+    // Configurações otimizadas para ambientes Serverless / Containers
     const browser = await puppeteer.launch({
       headless: true,
+      ...(executablePath ? { executablePath } : {}),
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
