@@ -7,6 +7,20 @@ cd "$(dirname "$0")/.."
 # Configurar Git safe.directory para o container
 git config --global --add safe.directory "*" 2>/dev/null || true
 
+# Instalar e configurar Git LFS se não estiver disponível
+if ! command -v git-lfs &>/dev/null; then
+    echo "📦 Instalando Git LFS..."
+    if command -v apt-get &>/dev/null; then
+        sudo apt-get update && sudo apt-get install -y git-lfs 2>/dev/null || apt-get update && apt-get install -y git-lfs 2>/dev/null || true
+    fi
+    if ! command -v git-lfs &>/dev/null; then
+        mkdir -p ~/.local/bin
+        curl -sL https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-linux-amd64-v3.5.1.tar.gz | tar -xz -C /tmp 2>/dev/null || true
+        cp /tmp/git-lfs-3.5.1/git-lfs ~/.local/bin/ 2>/dev/null || true
+    fi
+    git lfs install 2>/dev/null || true
+fi
+
 echo "=========================================================="
 echo "🚀 Configurando o ambiente de desenvolvimento Smart Twin IE"
 echo "=========================================================="
