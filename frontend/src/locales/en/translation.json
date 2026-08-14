@@ -29,8 +29,7 @@
   },
   "home": {
     "platform_title": "SMART TWIN-IE",
-    "platform_subtitle": "Digital Twins and Intelligent Structural Inspection",
-    "tech_section_title": "Cutting-edge Technology",
+    "platform_subtitle": "Automated Inspection Platform",
     "feature_ia_title": "AI Inspection",
     "feature_ia_desc": "Automated detection of pathologies with YOLOv8 models optimized for engineering.",
     "feature_ortho_title": "Orthomosaics",

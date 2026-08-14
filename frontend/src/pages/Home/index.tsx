@@ -36,7 +36,6 @@ const Home: React.FC = () => {
 
       <Container>
         {/* Funcionalidades */}
-        <h2 className="section-title text-center">{t('home.tech_section_title')}</h2>
         <Row className="g-4 mb-5">
           <Col lg={3} md={6}>
             <Card className="functionality-card border-0">

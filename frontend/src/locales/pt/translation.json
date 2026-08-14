@@ -29,8 +29,7 @@
   },
   "home": {
     "platform_title": "SMART TWIN-IE",
-    "platform_subtitle": "Gêmeos Digitais e Inspeção Estrutural Inteligente",
-    "tech_section_title": "Tecnologia de Ponta",
+    "platform_subtitle": "Plataforma de Inspeções Automatizadas",
     "feature_ia_title": "Inspeção por IA",
     "feature_ia_desc": "Detecção automatizada de patologias com modelos YOLOv8 otimizados para engenharia.",
     "feature_ortho_title": "Ortomosaicos",
