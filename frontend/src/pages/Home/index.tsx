@@ -26,7 +26,7 @@ const Home: React.FC = () => {
             </Col>
             <Col lg={8}>
               <h1 className="platform-title">
-                SMART <span className="text-green">TWIN</span>-I<span className="text-green">E</span>
+                SMART <span className="text-green">TWIN</span>-IE
               </h1>
               <h2 className="subtitle-home">{t('home.platform_subtitle')}</h2>
             </Col>
