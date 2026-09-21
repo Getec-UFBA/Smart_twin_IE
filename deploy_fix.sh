@@ -67,9 +67,9 @@ fi
 
 (
     cd "$SCRIPT_DIR"
-    firebase deploy --only functions,hosting
+    firebase deploy --only functions,hosting,firestore,storage
 )
 
 echo "=========================================="
-echo "✅ Deploy concluído com sucesso!"
+echo "Deploy concluido com sucesso!"
 echo "=========================================="

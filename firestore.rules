@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Usuários autenticados podem ler seu próprio perfil e outros perfis necessários
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Regra geral: permite leitura e escrita para qualquer usuário autenticado
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

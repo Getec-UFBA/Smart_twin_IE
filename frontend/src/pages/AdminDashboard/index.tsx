@@ -43,8 +43,9 @@ const AdminDashboard: React.FC = () => {
     setSubmitting(true);
     
     try {
-      await api.post('/users/authorize', { email, role });
-      setSuccess(t('register_user.success_message', { email }));
+      const cleanEmail = email.trim().toLowerCase();
+      await api.post('/users/authorize', { email: cleanEmail, role });
+      setSuccess(t('register_user.success_message', { email: cleanEmail }));
       setEmail('');
       setRole('user');
       fetchEmails();

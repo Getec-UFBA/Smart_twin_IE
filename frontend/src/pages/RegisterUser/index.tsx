@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import api from '../../services/api';
 import PasswordInput from '../../components/PasswordInput';
@@ -30,22 +30,26 @@ const RegisterUser: React.FC = () => {
     }
 
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
     try {
       // 1. Tenta criar o usuário no Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       const user = userCredential.user;
 
-      // 2. Chama o backend para validar autorização e salvar dados no Firestore
+      // 2. Chama o backend para validar autorização e salvar dados no Firestore com a role definida
       try {
         await api.post('/users', {
           id: user.uid,
-          email: user.email,
-          name,
-          company,
-          role: 'user'
+          email: cleanEmail,
+          name: name.trim(),
+          company: company.trim(),
+          role: 'user' // O backend sobrescreve com a role configurada em authorized_emails
         });
         
-        alert('Cadastro realizado com sucesso!');
+        // 3. Desconecta o usuário do Firebase Auth para que no login a sessão carregue completa
+        await signOut(auth);
+
+        alert('Cadastro realizado com sucesso! Faça login para acessar o sistema.');
         navigate('/login');
       } catch (backendError: any) {
         // Se o backend falhar (ex: não autorizado), removemos o usuário do Auth para não ficar sujo

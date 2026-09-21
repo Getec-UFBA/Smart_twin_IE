@@ -4,22 +4,38 @@ Plataforma web para visualização, análise e gerenciamento de inspeções téc
 
 ---
 
-## 🏗️ Arquitetura do Sistema
+## Arquitetura do Sistema
 
 O projeto é dividido em três serviços principais dispostos no repositório:
 
 1. **`frontend/` (React + Vite)**: Interface do usuário para mapas interativos, exibição de gêmeos digitais, relatórios e gestão de inspeções. (Porta `5173`)
 2. **`backend/` (Node.js + Express + TypeScript)**: API central, autenticação, gerenciamento de relatórios (Puppeteer PDF), integração com o Firebase Firestore e Storage. (Porta `3001`)
-3. **`ai-service/` (Python + FastAPI + YOLOv8)**: Microserviço de visão computacional e análise geoespacial para identificação de componentes, defeitos e processamento de ortofotos GeoTIFF. (Porta `8001`)
+3. **`ai-service/` (Python + FastAPI + YOLO)**: Microserviço de visão computacional e análise geoespacial para identificação de componentes, defeitos e processamento de ortofotos GeoTIFF. (Porta `8001`)
 
 ---
 
-## 🔒 Configuração das Variáveis de Ambiente (`.env`)
+## Configuração das Variáveis de Ambiente (`.env`)
 
-Antes de iniciar a aplicação, verifique se os arquivos `.env` existem em suas respectivas pastas e se contêm as credenciais necessárias configuradas:
+A aplicação necessita de **dois arquivos `.env` separados** (um dentro da pasta `backend/` e outro dentro da pasta `frontend/`). O serviço `ai-service/` não necessita de arquivo `.env`.
+
+### Onde criar os arquivos `.env`:
+
+```text
+Smart_twin_IE/
+│
+├── backend/
+│   ├── .env                    <-- [CRIAR AQUI] Variáveis da API e credenciais do Firebase Admin
+│   └── ...
+│
+├── frontend/
+│   ├── .env                    <-- [CRIAR AQUI] Credenciais públicas do Firebase Web App
+│   └── ...
+│
+└── ai-service/                 (não requer arquivo .env)
+```
 
 ### 1. Backend (`backend/.env`)
-Certifique-se de que o arquivo `backend/.env` existe e contém as seguintes variáveis de ambiente:
+Crie o arquivo em `backend/.env` com as seguintes chaves:
 
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_CLIENT_EMAIL`
@@ -30,7 +46,7 @@ Certifique-se de que o arquivo `backend/.env` existe e contém as seguintes vari
 - `PORT`
 
 ### 2. Frontend (`frontend/.env`)
-Certifique-se de que o arquivo `frontend/.env` existe e contém as seguintes variáveis de ambiente:
+Crie o arquivo em `frontend/.env` com as seguintes chaves:
 
 - `VITE_FIREBASE_API_KEY`
 - `VITE_FIREBASE_AUTH_DOMAIN`
@@ -41,7 +57,7 @@ Certifique-se de que o arquivo `frontend/.env` existe e contém as seguintes var
 
 ---
 
-## 📁 Estrutura de Diretórios
+## Estrutura de Diretórios
 
 ```text
 Smart_twin_IE/
@@ -50,9 +66,11 @@ Smart_twin_IE/
 │   ├── devcontainer.json # Mapeamento de portas e extensões do VS Code
 │   └── post-create.sh    # Instalação automática de dependências no container
 ├── frontend/             # Aplicação Web em React + Vite + TypeScript (Porta 5173)
+│   ├── .env              # [OBRIGATÓRIO] Variáveis do Firebase Web (Vite)
 │   ├── src/              # Componentes, páginas, serviços e contexto
 │   └── vite.config.ts    # Configurações do Vite e servidor local
 ├── backend/              # API REST em Node.js + Express + TypeScript (Porta 3001)
+│   ├── .env              # [OBRIGATÓRIO] Chaves secretas, Firebase Admin e JWT
 │   ├── src/              # Rotas, controladores, serviços Firebase e PDF
 │   └── public/           # Arquivos estáticos e modelos de relatório
 ├── ai-service/           # Microserviço de Inteligência Artificial em Python (Porta 8001)
@@ -67,7 +85,7 @@ Smart_twin_IE/
 
 ---
 
-## 🚀 Como Executar o Projeto
+## Como Executar o Projeto
 
 ### Opção A: Utilizando DevContainer (Recomendado)
 
@@ -82,9 +100,9 @@ O projeto possui um ambiente pré-configurado via **Dev Containers (VS Code + Do
    ./start.sh
    ```
 6. Acesse os serviços localmente:
-   - 🌐 **Frontend (React)**: [http://localhost:5173](http://localhost:5173)
-   - ⚡ **Backend API**: [http://localhost:3001](http://localhost:3001)
-   - 🤖 **AI Service**: [http://localhost:8001](http://localhost:8001)
+   - **Frontend (React)**: [http://localhost:5173](http://localhost:5173)
+   - **Backend API**: [http://localhost:3001](http://localhost:3001)
+   - **AI Service**: [http://localhost:8001](http://localhost:8001)
 
 ---
 
@@ -123,7 +141,7 @@ start.bat
 
 ---
 
-## 🚀 Deploy no Firebase (Cloud Functions + Hosting)
+## Deploy no Firebase (Cloud Functions + Hosting)
 
 Para atualizar o deploy em ambiente de produção (Firebase Cloud Functions para o backend e Firebase Hosting para o frontend React):
 
@@ -132,9 +150,24 @@ chmod +x deploy_fix.sh
 ./deploy_fix.sh
 ```
 
+> **Manual Completo de Infraestrutura e Nuvem:** Para migração de conta, provisionamento do zero, dimensionamento de hardware (CPU/RAM da IA e Backend) e solução de problemas, consulte o manual detalhado em [`docs/FIREBASE_CLOUD_SETUP.md`](docs/FIREBASE_CLOUD_SETUP.md).
+
 ---
 
-## 📋 Resumo das Portas e Serviços
+## Endereços de Produção (Hospedagem)
+
+| Componente | Endereço / URL | Plataforma | Observações |
+| :--- | :--- | :--- | :--- |
+| **Aplicação Web (Principal)** | [https://smart-twins-ie.web.app](https://smart-twins-ie.web.app) | Firebase Hosting | Domínio padrão de produção |
+| **Aplicação Web (Alternativa)** | [https://smart-twins-ie.firebaseapp.com](https://smart-twins-ie.firebaseapp.com) | Firebase Hosting | Domínio secundário do Firebase |
+| **Backend API (REST)** | `https://smart-twins-ie.web.app/api` | Firebase Cloud Functions V2 | Roteado via rewrite no Firebase Hosting (`southamerica-east1`) |
+| **Serviço de IA** | `https://ai-service-924973446777.us-central1.run.app` | Google Cloud Run | Microsserviço de inferência YOLO e ortofotos |
+
+* **Projeto Firebase:** `smart-twins-ie`
+
+---
+
+## Resumo das Portas e Serviços
 
 | Serviço | Diretório | Tecnologia | Porta |
 | :--- | :--- | :--- | :--- |

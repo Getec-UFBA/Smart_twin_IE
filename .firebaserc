@@ -1,6 +1,7 @@
 {
   "projects": {
-    "smartTwinsIE": "smarttwinsie-a918a"
+    "default": "smart-twins-ie",
+    "smartTwinsIE": "smart-twins-ie"
   },
   "targets": {},
   "etags": {}

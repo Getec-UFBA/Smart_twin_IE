@@ -43,36 +43,63 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (firebaseUser) {
         try {
           // Força a obtenção de um token novo e válido
-          const idToken = await firebaseUser.getIdToken(true);
+          const tokenResult = await firebaseUser.getIdTokenResult(true);
+          const idToken = tokenResult.token;
+          const claimRole = tokenResult.claims.role as 'admin' | 'user' | undefined;
           setToken(idToken);
           
           // Configura o token no Axios IMEDIATAMENTE
           api.defaults.headers.Authorization = `Bearer ${idToken}`;
           
-          // Busca dados adicionais do usuário no Firestore
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          
-          if (userDoc.exists()) {
-            const userData = { id: firebaseUser.uid, ...userDoc.data() } as IUser;
-            setUser(userData);
-            localStorage.setItem('@gdp:user', JSON.stringify(userData));
+          let loadedUser: IUser | null = null;
+
+          // 1. Tenta buscar o perfil completo via Backend API (/profile/me com Admin SDK)
+          try {
+            const profileRes = await api.get('/profile/me');
+            if (profileRes.data && profileRes.data.role) {
+              loadedUser = profileRes.data as IUser;
+            }
+          } catch (apiErr) {
+            console.warn("API /profile/me indisponível no momento, usando fallback Firestore:", apiErr);
+          }
+
+          // 2. Se a API não respondeu, busca diretamente no Firestore pelo SDK Web
+          if (!loadedUser) {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+              if (userDoc.exists()) {
+                loadedUser = { id: firebaseUser.uid, ...userDoc.data() } as IUser;
+              }
+            } catch (fsErr) {
+              console.warn("Erro ao buscar no Firestore pelo cliente:", fsErr);
+            }
+          }
+
+          // 3. Aplica o usuário com a role identificada (prioriza claim do token se houver)
+          if (loadedUser) {
+            if (claimRole && loadedUser.role !== claimRole) {
+              loadedUser.role = claimRole;
+            }
+            setUser(loadedUser);
+            localStorage.setItem('@gdp:user', JSON.stringify(loadedUser));
           } else {
             const basicUser: IUser = {
               id: firebaseUser.uid,
               email: firebaseUser.email || '',
-              role: 'user'
+              role: claimRole || 'user'
             };
             setUser(basicUser);
+            localStorage.setItem('@gdp:user', JSON.stringify(basicUser));
           }
         } catch (error) {
-          console.error("Erro ao processar login:", error);
+          console.error("Erro ao processar autenticação:", error);
           await firebaseSignOut(auth);
         }
       } else {
         setUser(null);
         setToken(null);
         delete api.defaults.headers.Authorization;
-        localStorage.clear(); // Limpa TUDO para evitar conflitos com versões antigas
+        localStorage.clear(); // Limpa dados locais
       }
       setLoading(false);
     });
@@ -81,11 +108,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async ({ email, password }: any) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const idToken = await userCredential.user.getIdToken();
+    const cleanEmail = (email || '').trim();
+    const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    const tokenResult = await userCredential.user.getIdTokenResult(true);
+    const idToken = tokenResult.token;
+    const claimRole = tokenResult.claims.role as 'admin' | 'user' | undefined;
     
     setToken(idToken);
     api.defaults.headers.Authorization = `Bearer ${idToken}`;
+
+    // Imediatamente tenta carregar os dados do usuário para evitar atraso de estado na navegação
+    try {
+      const profileRes = await api.get('/profile/me');
+      if (profileRes.data) {
+        const userData = profileRes.data as IUser;
+        if (claimRole) userData.role = claimRole;
+        setUser(userData);
+        localStorage.setItem('@gdp:user', JSON.stringify(userData));
+        return;
+      }
+    } catch (e) {
+      // Fallback para Firestore
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      if (userDoc.exists()) {
+        const userData = { id: userCredential.user.uid, ...userDoc.data() } as IUser;
+        if (claimRole) userData.role = claimRole;
+        setUser(userData);
+        localStorage.setItem('@gdp:user', JSON.stringify(userData));
+      }
+    }
   };
 
   const logout = async () => {
