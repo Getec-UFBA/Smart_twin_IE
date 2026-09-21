@@ -60,8 +60,25 @@ A plataforma opera no modelo de microsserviços distribuídos entre o **Firebase
 | **Backend API (REST)** | `https://smart-twins-ie.web.app/api` | Firebase Cloud Functions V2 | Roteado via rewrite no Hosting para a função `api` (`southamerica-east1`) |
 | **Serviço de IA** | `https://ai-service-924973446777.us-central1.run.app` | Google Cloud Run | Microsserviço Python/FastAPI/YOLO (`us-central1`) |
 
-* **ID do Projeto Firebase:** `smart-twins-ie`
+* **ID do Projeto Firebase / Google Cloud:** `smart-twins-ie`
 * **Bucket do Cloud Storage:** `smart-twins-ie.firebasestorage.app`
+
+### Consoles e Painéis de Gerenciamento Web
+
+Acesso direto aos consoles oficiais de administração com o projeto `smart-twins-ie` pré-selecionado:
+
+| Painel / Console | Link Direto | Finalidade Principal |
+| :--- | :--- | :--- |
+| **Google Cloud Console (Visão Geral)** | [console.cloud.google.com](https://console.cloud.google.com/welcome?project=smart-twins-ie) | Dashboard geral da infraestrutura, faturamento e cotas do GCP |
+| **Google Cloud Run (ai-service)** | [console.cloud.google.com/run](https://console.cloud.google.com/run/detail/us-central1/ai-service?project=smart-twins-ie) | Monitoramento de CPU, memória, instâncias ativas, revisões e logs do serviço de IA |
+| **Cloud Logging (Logs em Tempo Real)** | [console.cloud.google.com/logs](https://console.cloud.google.com/logs/query?project=smart-twins-ie) | Logs detalhados em tempo real de Cloud Functions (`api`) e Cloud Run (`ai-service`) |
+| **Cloud Build (Histórico de Builds)** | [console.cloud.google.com/cloud-build](https://console.cloud.google.com/cloud-build/builds?region=us-central1&project=smart-twins-ie) | Histórico e progresso da compilação e deploy das imagens Docker |
+| **Secret Manager (Segredos da Nuvem)** | [console.cloud.google.com/security/secret-manager](https://console.cloud.google.com/security/secret-manager?project=smart-twins-ie) | Gerenciamento de chaves do Firebase Admin, JWT e URLs seguras |
+| **Firebase Console (Visão Geral)** | [console.firebase.google.com](https://console.firebase.google.com/project/smart-twins-ie/overview) | Dashboard principal do Firebase com status de Hosting, Auth e Firestore |
+| **Cloud Firestore (Banco de Dados)** | [console.firebase.google.com/firestore](https://console.firebase.google.com/project/smart-twins-ie/firestore) | Visualizador e editor de coleções NoSQL (`projects`, `users`, `authorized_emails`) |
+| **Firebase Authentication (Usuários)** | [console.firebase.google.com/authentication](https://console.firebase.google.com/project/smart-twins-ie/authentication/users) | Gestão de contas de usuários, redefinição de senhas e provedores de acesso |
+| **Cloud Storage (Fotos e Mídias)** | [console.firebase.google.com/storage](https://console.firebase.google.com/project/smart-twins-ie/storage) | Navegador de arquivos para fotos de inspeções, recortes e ortomosaicos |
+| **Firebase Hosting (Hospedagem Web)** | [console.firebase.google.com/hosting](https://console.firebase.google.com/project/smart-twins-ie/hosting) | Gestão de domínios, certificados SSL e histórico de releases |
 
 ---
 

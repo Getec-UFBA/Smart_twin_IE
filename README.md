@@ -184,7 +184,17 @@ A pasta [`docs/`](docs/) reune guias detalhados para administradores, desenvolve
 | **Backend API (REST)** | `https://smart-twins-ie.web.app/api` | Firebase Cloud Functions V2 | Roteado via rewrite no Firebase Hosting (`southamerica-east1`) |
 | **Serviço de IA** | `https://ai-service-924973446777.us-central1.run.app` | Google Cloud Run | Microsserviço de inferência YOLO e ortofotos |
 
-* **Projeto Firebase:** `smart-twins-ie`
+* **ID do Projeto Firebase / Google Cloud:** `smart-twins-ie`
+
+### Consoles de Gerenciamento Web
+
+* **Google Cloud Console:** [console.cloud.google.com](https://console.cloud.google.com/welcome?project=smart-twins-ie)
+* **Google Cloud Run (ai-service):** [console.cloud.google.com/run](https://console.cloud.google.com/run/detail/us-central1/ai-service?project=smart-twins-ie)
+* **Cloud Logging (Logs em tempo real):** [console.cloud.google.com/logs](https://console.cloud.google.com/logs/query?project=smart-twins-ie)
+* **Cloud Build (Deploys Docker):** [console.cloud.google.com/cloud-build](https://console.cloud.google.com/cloud-build/builds?region=us-central1&project=smart-twins-ie)
+* **Firebase Console:** [console.firebase.google.com](https://console.firebase.google.com/project/smart-twins-ie/overview)
+* **Cloud Firestore:** [console.firebase.google.com/firestore](https://console.firebase.google.com/project/smart-twins-ie/firestore)
+* **Cloud Storage:** [console.firebase.google.com/storage](https://console.firebase.google.com/project/smart-twins-ie/storage)
 
 ---
 
