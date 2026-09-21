@@ -92,6 +92,46 @@ Este serviço roda o **Puppeteer (Google Chrome Headless)** para renderizar e co
 * **Tempo Limite (Timeout):** **`540 segundos` (9 minutos)** — limite máximo para funções HTTP.
 * **Região:** **`southamerica-east1`** (São Paulo) — crucial para garantir baixa latência para os clientes no Brasil.
 
+### 2.3. Como Economizar: Aumentar e Diminuir Recursos Dinamicamente
+
+O Google Cloud Run cobra **estritamente pelos segundos em que uma requisicao esta sendo processada**. Quando ninguem esta usando a plataforma ou enviando fotos, o servico escala automaticamente para **zero instâncias**, resultando em **custo zero**.
+
+Alem disso, voce pode facilmente alternar a potencia da maquina entre modo economico e modo de alta performance sem precisar recompilar o codigo ou refazer o deploy:
+
+#### Opcao A: Via Scripts Automatizados (1 Clique no Terminal)
+
+* **Quando for rodar inspecoes pesadas ou gerar relatorios grandes (Modo Alta Performance):**
+  Aumenta a maquina para **8 GiB de RAM** e **4 vCPUs**:
+  ```bash
+  ./scale_up_ai.sh
+  ```
+
+* **Quando terminar o trabalho e quiser economizar (Modo Economico):**
+  Reduz a maquina para **2 GiB de RAM** e **1 vCPU**:
+  ```bash
+  ./scale_down_ai.sh
+  ```
+
+#### Opcao B: Via Linha de Comando Manual (gcloud CLI)
+
+* **Reduzir para economizar:**
+  ```bash
+  gcloud run services update ai-service --memory 2Gi --cpu 1 --region us-central1 --project smart-twins-ie
+  ```
+
+* **Aumentar para alta performance:**
+  ```bash
+  gcloud run services update ai-service --memory 8Gi --cpu 4 --region us-central1 --project smart-twins-ie
+  ```
+
+#### Opcao C: Pelo Console Web do Google Cloud
+
+1. Acesse o [Google Cloud Run](https://console.cloud.google.com/run).
+2. Clique no servico `ai-service`.
+3. Clique em **Editar e implantar nova revisao** no topo.
+4. Na aba **Conteiner**, altere os campos **Capacidade de memoria** (ex: `2 GiB` ou `8 GiB`) e **CPU** (ex: `1` ou `4`).
+5. Clique em **Implantar**. Em menos de 10 segundos a nova configuracao estara ativa.
+
 ---
 
 ## 3. Dicionário de Variáveis de Ambiente e Segredos
@@ -332,7 +372,25 @@ Este método lê a pasta `ai-service/`, envia o código para o **Google Cloud Bu
 
 ## 5. Ciclo de Vida: Como Fazer Atualizações no Dia a Dia
 
-Para desenvolvedores futuros que alterarem partes específicas do código:
+### 5.1. Sequencia Recomendada de Deploy Completo
+
+Ao realizar atualizacoes que envolvem tanto a IA/Relatorios quanto o Backend/Frontend:
+
+1. **Passo 1 (Primeiro): Deploy da IA e Relatorios (`./deploy_ai.sh`)**
+   Sobe a nova imagem Docker para o Cloud Run com o motor Chromium e a rota `/generate-pdf` prontos para atender requisicoes.
+   ```bash
+   ./deploy_ai.sh
+   ```
+
+2. **Passo 2 (Segundo): Deploy do Backend e Frontend (`./deploy_fix.sh`)**
+   Compila a interface React, envia os segredos do Firebase e sobe a Cloud Function `api`, que passara a se comunicar com a nova revisao da IA.
+   ```bash
+   ./deploy_fix.sh
+   ```
+
+### 5.2. Atualizacoes Pontuais
+
+Para desenvolvedores que alterarem apenas partes isoladas do projeto:
 
 * **Se alterou apenas o Frontend React:**
   ```bash
@@ -350,17 +408,21 @@ Para desenvolvedores futuros que alterarem partes específicas do código:
   firebase deploy --only functions
   ```
 
-* **Se alterou o código Python ou modelos YOLO (`ai-service`):**
+* **Se alterou o código Python, modelos YOLO ou geração de PDF (`ai-service`):**
+  ```bash
+  ./deploy_ai.sh
+  ```
+  *(Ou execute manualmente via gcloud:)*
   ```bash
   gcloud run deploy ai-service \
     --source ./ai-service \
     --region us-central1 \
     --allow-unauthenticated \
-    --memory 4Gi \
-    --cpu 2 \
-    --timeout 600 \
+    --memory 8Gi \
+    --cpu 4 \
+    --timeout 900 \
     --concurrency 1 \
-    --project ID-DO-PROJETO
+    --project smart-twins-ie
   ```
 
 * **Se alterou senhas ou variáveis secretas do Backend:**

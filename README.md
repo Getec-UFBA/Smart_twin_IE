@@ -141,16 +141,37 @@ start.bat
 
 ---
 
-## Deploy no Firebase (Cloud Functions + Hosting)
+## Sequencia de Deploy para Producao
 
-Para atualizar o deploy em ambiente de produção (Firebase Cloud Functions para o backend e Firebase Hosting para o frontend React):
+Ao atualizar a plataforma ou subir novas melhorias:
+
+### 1. Primeiro: Deploy do Servico de IA e Relatorios (Cloud Run)
+Publica o microservico de Inteligencia Artificial e o motor Chromium de geracao de relatorios PDF:
+
+```bash
+chmod +x deploy_ai.sh
+./deploy_ai.sh
+```
+
+### 2. Segundo: Deploy da Aplicacao e Backend (Firebase)
+Compila o frontend React, envia os segredos atualizados e publica a API (Cloud Functions) que chama o servico de IA:
 
 ```bash
 chmod +x deploy_fix.sh
 ./deploy_fix.sh
 ```
 
-> **Manual Completo de Infraestrutura e Nuvem:** Para migração de conta, provisionamento do zero, dimensionamento de hardware (CPU/RAM da IA e Backend) e solução de problemas, consulte o manual detalhado em [`docs/FIREBASE_CLOUD_SETUP.md`](docs/FIREBASE_CLOUD_SETUP.md).
+---
+
+## Manuais e Documentacoes Tecnicas (`docs/`)
+
+A pasta [`docs/`](docs/) reune guias detalhados para administradores, desenvolvedores e pesquisadores:
+
+1. **[`docs/modulos.md`](docs/modulos.md):** Mapa arquitetural detalhado de cada modulo do sistema (`.devcontainer`, `ai-service`, `backend`, `frontend`, scripts e matriz de consulta rapida).
+2. **[`docs/hospedagem.md`](docs/hospedagem.md):** Manual de infraestrutura, provisionamento do zero, deploy no Firebase/Cloud Run, escalonamento dinamico de hardware e resolucao de problemas.
+3. **[`docs/api.md`](docs/api.md):** Contrato completo de todos os endpoints REST (Backend e IA), parametros de requisicao, cabecalhos de autenticacao e respostas JSON.
+4. **[`docs/fluxo_inspecao.md`](docs/fluxo_inspecao.md):** Ciclo de vida ponta a ponta da inspecao (upload do drone, fatiamento matricial com IA, georreferenciamento GDAL, revisao humana e relatorio PDF).
+5. **[`docs/banco_de_dados.md`](docs/banco_de_dados.md):** Dicionario de dados e modelagem NoSQL do Cloud Firestore (`projects`, `users`, `authorized_emails`), regras de seguranca e estrategia de backup.
 
 ---
 
