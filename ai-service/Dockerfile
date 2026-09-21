@@ -1,19 +1,20 @@
 FROM python:3.9-slim
 
-# evita que o Python gere arquivos .pyc e permite logs em tempo real
+# Evita que o Python gere arquivos .pyc e permite logs em tempo real
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# instala dependências do sistema necessárias para OpenCV, Rasterio e processamento de imagem
+# Instala dependências do sistema necessárias para OpenCV, Rasterio, GDAL e ferramentas de compilação
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     gdal-bin \
     libgdal-dev \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Define variáveis de ambiente para o Rasterio/GDAL (importante para processar GeoTIFFs)
+# Define variáveis de ambiente para o Rasterio/GDAL
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal
 ENV C_INCLUDE_PATH=/usr/include/gdal
 
@@ -24,6 +25,9 @@ COPY requirements.txt .
 
 # Instala as dependências do Python
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Instala o Chromium do Playwright com todas as dependências do sistema Linux necessárias para renderização de PDF
+RUN playwright install --with-deps chromium
 
 # Copia o restante do código
 COPY . .

@@ -1,5 +1,6 @@
 import ProjectRepository from '../repositories/ProjectRepository';
 import puppeteer from 'puppeteer';
+import axios from 'axios';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -60,9 +61,11 @@ function escapeHtml(text: string): string {
 
 class ReportService {
   private projectRepository: ProjectRepository;
+  private pythonServiceUrl: string;
 
   constructor() {
     this.projectRepository = new ProjectRepository();
+    this.pythonServiceUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
   }
 
   public async generatePdfReport(projectId: string, inspectionId?: string): Promise<Buffer> {
@@ -74,13 +77,35 @@ class ReportService {
     }
 
     const htmlContent = this.generateHtmlReport(project, inspectionId);
+
+    // 1. Tentar gerar via microserviço de IA (Cloud Run / Docker com Chromium)
+    if (this.pythonServiceUrl) {
+      try {
+        console.log(`[ReportService] Solicitando PDF para o AI Service em ${this.pythonServiceUrl}/generate-pdf...`);
+        const response = await axios.post(`${this.pythonServiceUrl}/generate-pdf`, {
+          html: htmlContent
+        }, {
+          responseType: 'arraybuffer',
+          timeout: 240000,
+          maxContentLength: 100 * 1024 * 1024,
+          maxBodyLength: 100 * 1024 * 1024,
+        });
+
+        if (response.data && response.data.byteLength > 0) {
+          console.log(`[ReportService] PDF gerado com sucesso via AI Service (${response.data.byteLength} bytes).`);
+          return Buffer.from(response.data);
+        }
+      } catch (aiError: any) {
+        console.warn(`[ReportService] Falha ao gerar via AI Service (${aiError?.message}). Acionando Puppeteer local como fallback.`);
+      }
+    }
     
-    // No Firebase Functions, o único diretório gravável é o /tmp (os.tmpdir)
+    // 2. Fallback: Puppeteer local (caso o AI Service esteja temporariamente inacessível)
     const tempDir = os.tmpdir();
     const tempFilePath = path.join(tempDir, `report_${projectId}_${Date.now()}.html`);
     fs.writeFileSync(tempFilePath, htmlContent);
 
-    console.log(`[ReportService] HTML salvo em ${tempFilePath}, iniciando Puppeteer...`);
+    console.log(`[ReportService] Fallback: HTML salvo em ${tempFilePath}, iniciando Puppeteer local...`);
 
     // Detectar executável do Chrome/Chromium no sistema se não especificado
     const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ||
