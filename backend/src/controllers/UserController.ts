@@ -22,6 +22,32 @@ class UserController {
     }
   }
 
+  // Listar todos os usuários da plataforma (todos podem ver o perfil de todos)
+  public async index(req: Request, res: Response): Promise<Response> {
+    const userService = new UserService();
+    try {
+      const users = await userService.listUsers();
+      return res.json(users);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  }
+
+  // Visualizar perfil detalhado de um usuário
+  public async show(req: Request, res: Response): Promise<Response> {
+    const { id } = req.params;
+    const userService = new UserService();
+    try {
+      const user = await userService.getUserProfile(id);
+      if (!user) {
+        return res.status(404).json({ message: 'Usuário não encontrado.' });
+      }
+      return res.json(user);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  }
+
   // Método para o Admin autorizar um novo e-mail
   public async authorize(req: AuthRequest, res: Response): Promise<Response> {
     const { email, role } = req.body;

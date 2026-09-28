@@ -7,19 +7,25 @@ class UserRepository {
   public async findByEmail(email: string): Promise<IUser | undefined> {
     const snapshot = await this.collection.where('email', '==', email.toLowerCase()).get();
     if (snapshot.empty) return undefined;
-    return snapshot.docs[0].data() as IUser;
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as IUser;
   }
 
   public async findById(id: string): Promise<IUser | undefined> {
     const doc = await this.collection.doc(id).get();
     if (!doc.exists) return undefined;
-    return doc.data() as IUser;
+    return { id: doc.id, ...doc.data() } as IUser;
+  }
+
+  public async findAll(): Promise<IUser[]> {
+    const snapshot = await this.collection.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as IUser));
   }
 
   public async saveUser(user: IUser): Promise<IUser> {
     // Usamos o ID do Firebase Auth (UID) como ID do documento no Firestore
     const { id, ...userData } = user;
-    await this.collection.doc(id).set(userData);
+    await this.collection.doc(id).set({ id, ...userData }, { merge: true });
     return user;
   }
 
@@ -32,7 +38,8 @@ class UserRepository {
   public async findByResetToken(token: string): Promise<IUser | undefined> {
     const snapshot = await this.collection.where('resetPasswordToken', '==', token).get();
     if (snapshot.empty) return undefined;
-    return snapshot.docs[0].data() as IUser;
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as IUser;
   }
 }
 

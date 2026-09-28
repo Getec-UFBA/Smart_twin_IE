@@ -49,12 +49,9 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
   }
 };
 
-export const authorizeRole = (roles: Array<'admin' | 'user'>) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (req.userRole && roles.includes(req.userRole)) {
-      return next();
-    }
-    console.error(`Acesso Negado: Usuário ${req.userId} tem role '${req.userRole}' mas as rotas exigem: ${roles}`);
-    return res.status(403).json({ message: 'Access denied' });
+export const authorizeRole = (_roles: Array<'admin' | 'user'>) => {
+  return (_req: AuthRequest, _res: Response, next: NextFunction) => {
+    // Branch sem controle de acesso: qualquer usuário autenticado pode acessar
+    return next();
   };
 };

@@ -52,9 +52,9 @@ const RegisterUser: React.FC = () => {
         alert('Cadastro realizado com sucesso! Faça login para acessar o sistema.');
         navigate('/login');
       } catch (backendError: any) {
-        // Se o backend falhar (ex: não autorizado), removemos o usuário do Auth para não ficar sujo
+        // Se o backend falhar, removemos o usuário do Auth para não ficar sujo
         await user.delete();
-        setError(backendError.response?.data?.message || 'Erro ao validar autorização.');
+        setError(backendError.response?.data?.message || 'Erro ao realizar cadastro.');
       }
     } catch (firebaseError: any) {
       setError('Erro ao criar conta: ' + firebaseError.message);
