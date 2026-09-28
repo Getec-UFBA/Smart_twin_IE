@@ -11,25 +11,7 @@ import {
   FaFolderOpen, FaPlus, FaTrashAlt 
 } from 'react-icons/fa';
 import './style.css';
-
-interface IOAE {
-  id: string;
-  name: string;
-  bimModelUrl: string;
-}
-
-interface IProject {
-  id: string;
-  name: string;
-  responsible: string;
-  coverImageUrl: string;
-  modules: {
-    progress: boolean;
-    security: boolean;
-    maintenance: boolean;
-  };
-  oae?: IOAE[];
-}
+import type { IProject } from '../../models/IProject';
 
 const Projetos: React.FC = () => {
   const { t } = useTranslation();
@@ -82,6 +64,9 @@ const Projetos: React.FC = () => {
 
   const filteredProjects = useMemo(() => {
     return allProjects.filter(project => {
+      // Edificações cadastradas pela Biblioteca não aparecem na aba Projetos
+      if (project.onlyLibrary) return false;
+
       const name = project.name || '';
       const responsible = project.responsible || '';
       const searchMatch = searchTerm === '' ||
@@ -215,7 +200,7 @@ const Projetos: React.FC = () => {
             <h1 className="page-header-title mb-0">{t('projects.title')}</h1>
             <p className="text-muted mt-2 mb-0">{t('projects.subtitle')}</p>
           </div>
-          {user?.role === 'admin' && (
+          {user && (
             <Button className="btn-primary d-flex align-items-center gap-2" onClick={() => setShowCreateModal(true)}>
               <FaPlus /> {t('projects.new_project')}
             </Button>
@@ -288,7 +273,7 @@ const Projetos: React.FC = () => {
                     >
                       {t('projects.open_project')}
                     </Button>
-                    {user?.role === 'admin' && (
+                    {user && (
                       <Button 
                         variant="outline-danger" 
                         onClick={() => {

@@ -520,7 +520,7 @@ const ProjectView: React.FC = () => {
             </div>
           </div>
 
-          {project.inspections?.map(insp => {
+          {project.inspections?.filter(insp => !insp.isPast).map(insp => {
             const isFuture = isInspectionFuture(insp.inspectionDate);
             return (
               <div 
@@ -562,14 +562,16 @@ const ProjectView: React.FC = () => {
             <Row>
               <Col md={4}>
                 <Card className="modern-card stat-card">
-                  <div className="stat-value">{project.inspections?.length || 0}</div>
+                  <div className="stat-value">
+                    {project.inspections?.filter(i => !i.isPast).length || 0}
+                  </div>
                   <div className="stat-label">{t('project_view.stat_total_inspections')}</div>
                 </Card>
               </Col>
               <Col md={4}>
                 <Card className="modern-card stat-card">
                   <div className="stat-value">
-                    {project.inspections?.reduce((acc, i) => acc + i.images.length, 0)}
+                    {project.inspections?.filter(i => !i.isPast).reduce((acc, i) => acc + i.images.length, 0) || 0}
                   </div>
                   <div className="stat-label">{t('project_view.stat_analyzed_photos')}</div>
                 </Card>
@@ -577,7 +579,7 @@ const ProjectView: React.FC = () => {
               <Col md={4}>
                 <Card className="modern-card stat-card">
                   <div className="stat-value">
-                    {project.inspections?.reduce((acc, i) => acc + (i.orthoResults?.length || 0), 0)}
+                    {project.inspections?.filter(i => !i.isPast).reduce((acc, i) => acc + (i.orthoResults?.length || 0), 0) || 0}
                   </div>
                   <div className="stat-label">{t('project_view.stat_processed_maps')}</div>
                 </Card>
