@@ -1,0 +1,518 @@
+.biblioteca-view-container {
+  padding-top: 24px;
+  padding-bottom: 60px;
+}
+
+.bib-view-top-bar .back-btn {
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+/* 4 PILARES NAV BAR (IMAGE.PNG) */
+.pillars-nav-bar {
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.pillar-btn {
+  background: var(--bs-tertiary-bg);
+  border: 2px solid transparent;
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-align: left;
+  color: var(--bs-body-color);
+}
+
+.pillar-btn:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pillar-btn.active {
+  background: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
+}
+
+[data-bs-theme="dark"] .pillar-btn.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+}
+
+.pillar-icon {
+  font-size: 1.5rem;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  flex-shrink: 0;
+}
+
+.pillar-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.pillar-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--bs-body-color);
+}
+
+.pillar-sub {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+}
+
+.pill-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 10px;
+}
+
+/* SECTION CARDS */
+.section-card {
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* SELETOR DE INSPEÇÕES PASSADAS / LOTES */
+.past-inspections-selector-card {
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.past-inspections-scroll-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.past-insp-pill {
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
+  padding: 10px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 220px;
+  color: var(--bs-body-color);
+}
+
+.past-insp-pill:hover {
+  border-color: #10b981;
+  transform: translateY(-2px);
+}
+
+.past-insp-pill.active {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.past-insp-pill.active .pill-sub {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.pill-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill-sub {
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color);
+  display: flex;
+  gap: 6px;
+}
+
+/* INSPECTION CARD */
+.active-inspection-card {
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.inspection-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* BANNER DE INSPEÇÃO SINCRONIZADA */
+.project-inspection-readonly-banner {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+/* DROPZONE */
+.bib-upload-dropzone {
+  border: 2px dashed var(--bs-border-color);
+  border-radius: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  background: var(--bs-tertiary-bg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bib-upload-dropzone:hover {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.bib-upload-dropzone.dragging {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  transform: scale(1.01);
+}
+
+.upload-cloud-icon {
+  font-size: 3rem;
+  color: #10b981;
+  margin-bottom: 12px;
+}
+
+.upload-progress-box {
+  padding: 20px;
+}
+
+/* GALLERY CONTROLS */
+.bib-gallery-controls .search-image-box {
+  position: relative;
+  min-width: 260px;
+}
+
+.search-image-box .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #10b981;
+}
+
+.search-image-box input {
+  padding: 8px 32px 8px 36px;
+  border-radius: 10px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  font-size: 0.9rem;
+}
+
+.search-image-box input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.btn-mode {
+  background: var(--bs-card-bg);
+  border: none;
+  padding: 8px 12px;
+  color: var(--bs-secondary-color);
+  cursor: pointer;
+}
+
+.btn-mode.active {
+  background: var(--bs-tertiary-bg);
+  color: #10b981;
+}
+
+/* BOTOES VERDE GETEC */
+.biblioteca-view-container .btn-primary {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+.biblioteca-view-container .btn-primary:hover,
+.biblioteca-view-container .btn-primary:focus {
+  background-color: #059669;
+  border-color: #059669;
+}
+
+.biblioteca-view-container .btn-outline-primary {
+  color: #10b981;
+  border-color: #10b981;
+}
+
+.biblioteca-view-container .btn-outline-primary:hover,
+.biblioteca-view-container .btn-outline-primary:focus {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+/* IMAGES GRID */
+.bib-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.bib-image-card {
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+.bib-image-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.card-image-box {
+  position: relative;
+  height: 150px;
+  background: #000;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.card-image-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s;
+}
+
+.card-image-box:hover img {
+  transform: scale(1.05);
+}
+
+.card-image-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.card-image-box:hover .card-image-overlay {
+  opacity: 1;
+}
+
+.overlay-btn {
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  border: none;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.card-details-box {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.card-filename {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-filesize {
+  font-size: 0.75rem;
+}
+
+/* IMAGES TABLE */
+.bib-images-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bib-images-table th {
+  padding: 12px 14px;
+  border-bottom: 2px solid var(--bs-border-color);
+  font-size: 0.82rem;
+  color: var(--bs-secondary-color);
+  text-transform: uppercase;
+}
+
+.bib-images-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--bs-border-color);
+  vertical-align: middle;
+}
+
+.table-thumb {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+/* LIGHTBOX */
+.bib-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.bib-lightbox-container {
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.lightbox-top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  padding-bottom: 12px;
+}
+
+.lightbox-filename {
+  font-size: 1rem;
+  font-weight: 600;
+  max-width: 60%;
+}
+
+.lightbox-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.lightbox-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.lightbox-btn.delete:hover {
+  background: #dc3545;
+}
+
+.lightbox-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 75vh;
+}
+
+.lightbox-image {
+  max-width: 85vw;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: background 0.2s;
+}
+
+.nav-arrow:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.nav-arrow.left {
+  left: -55px;
+}
+
+.nav-arrow.right {
+  right: -55px;
+}
+
+.lightbox-footer {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .nav-arrow.left {
+    left: 8px;
+  }
+  .nav-arrow.right {
+    right: 8px;
+  }
+}

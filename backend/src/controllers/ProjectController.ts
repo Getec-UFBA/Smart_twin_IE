@@ -560,7 +560,8 @@ class ProjectController {
       facadeTypology,
       roofTypology,
       buildingAcronym,
-      unitDirector
+      unitDirector,
+      onlyLibrary
     } = req.body;
     
     if (!userId) {
@@ -586,7 +587,8 @@ class ProjectController {
         facadeTypology,
         roofTypology,
         buildingAcronym,
-        unitDirector
+        unitDirector,
+        onlyLibrary
       });
       return res.status(201).json(project);
     } catch (error) {
@@ -638,7 +640,7 @@ class ProjectController {
 
   public async createInspection(req: AuthRequest, res: Response): Promise<Response> {
     const { projectId } = req.params;
-    const { inspectionType, inspectionObjective, inspectionDate, inspectionResponsible } = req.body;
+    const { inspectionType, inspectionObjective, inspectionDate, inspectionResponsible, isPast } = req.body;
 
     if (!projectId || !inspectionObjective.trim() || !inspectionDate || !inspectionResponsible.trim()) {
       return res.status(400).json({ error: 'ID do projeto, objetivo, data e responsável pela inspeção são obrigatórios.' });
@@ -652,6 +654,7 @@ class ProjectController {
         inspectionObjective,
         inspectionDate,
         inspectionResponsible,
+        isPast: Boolean(isPast),
       });
       return res.status(201).json(newInspection);
     } catch (error) {
@@ -659,6 +662,27 @@ class ProjectController {
         return res.status(400).json({ error: error.message });
       }
       return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+  }
+
+  public async addImages(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, inspectionId } = req.params;
+    const { images } = req.body;
+
+    if (!projectId || !inspectionId || !images || !Array.isArray(images)) {
+      return res.status(400).json({ error: 'ID do projeto, ID da inspeção e lista de imagens são obrigatórios.' });
+    }
+
+    const projectService = new ProjectService();
+    try {
+      const updatedProject = await projectService.addImagesToInspection({
+        projectId,
+        inspectionId,
+        images,
+      });
+      return res.status(200).json(updatedProject);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message || 'Erro ao adicionar imagens à inspeção.' });
     }
   }
 
@@ -800,6 +824,113 @@ class ProjectController {
         return res.status(400).json({ error: error.message });
       }
       return res.status(500).json({ error: 'Erro interno do servidor.' });
+    }
+  }
+
+  // --- BIBLIOTECA: CAD CONTROLLER ---
+  public async addCadFile(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId } = req.params;
+    const { file } = req.body;
+    if (!projectId || !file) {
+      return res.status(400).json({ error: 'ID do projeto e dados do arquivo CAD são obrigatórios.' });
+    }
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.addCadFile(projectId, file);
+      return res.status(201).json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  public async deleteCadFile(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, fileId } = req.params;
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.deleteCadFile(projectId, fileId);
+      return res.json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  // --- BIBLIOTECA: BIM CONTROLLER ---
+  public async addBimFile(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId } = req.params;
+    const { file } = req.body;
+    if (!projectId || !file) {
+      return res.status(400).json({ error: 'ID do projeto e dados do arquivo BIM são obrigatórios.' });
+    }
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.addBimFile(projectId, file);
+      return res.status(201).json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  public async deleteBimFile(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, fileId } = req.params;
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.deleteBimFile(projectId, fileId);
+      return res.json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  // --- BIBLIOTECA: PRODUTOS FOTOGRAMÉTRICOS CONTROLLER ---
+  public async createPhotogrammetryBatch(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId } = req.params;
+    const { batch } = req.body;
+    if (!projectId || !batch) {
+      return res.status(400).json({ error: 'ID do projeto e dados do lote fotogramétrico são obrigatórios.' });
+    }
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.createPhotogrammetryBatch(projectId, batch);
+      return res.status(201).json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  public async addFilesToPhotogrammetryBatch(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, batchId } = req.params;
+    const { files } = req.body;
+    if (!projectId || !batchId || !files || !Array.isArray(files)) {
+      return res.status(400).json({ error: 'ID do projeto, ID do lote e lista de arquivos são obrigatórios.' });
+    }
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.addFilesToPhotogrammetryBatch(projectId, batchId, files);
+      return res.json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  public async deletePhotogrammetryBatch(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, batchId } = req.params;
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.deletePhotogrammetryBatch(projectId, batchId);
+      return res.json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  public async deletePhotogrammetryFile(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, batchId, fileId } = req.params;
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.deletePhotogrammetryFile(projectId, batchId, fileId);
+      return res.json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
     }
   }
 }
