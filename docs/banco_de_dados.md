@@ -76,7 +76,7 @@ Armazena as informacoes cadastrais, cargo e papel de cada usuario autenticado.
 
 ## 3. Colecao: authorized_emails (Controle de Acesso e Pre-cadastro)
 
-Controla quais e-mails tem permissao para se registrar na plataforma. Nenhum usuario desconhecido consegue concluir cadastro sem que seu e-mail tenha sido previamente inserido nesta colecao por um administrador.
+Originalmente utilizada para controle estrito de pre-autorizacao. Atualmente, o cadastro de usuarios na plataforma e aberto e direto (`POST /users`), sendo que `authorized_emails` e mantida para compatibilidade, atribuicao previa de cargos (`role: 'admin'`) ou politicas administrativas de pre-autorizacao.
 
 * **Caminho no Firestore:** `authorized_emails/{email}`
 * **Identificador do Documento (`email`):** E-mail sanitizado (em letras minusculas e sem espacos nas pontas, ex: `engenheiro@empresa.com`).
@@ -106,7 +106,7 @@ Controla quais e-mails tem permissao para se registrar na plataforma. Nenhum usu
 
 ## 4. Colecao: projects (Projetos, Inspecoes e Gemeos Digitais)
 
-Armazena as estruturas de engenharia, subestacoes eletricas, predios e historicos de voo de drone com todas as deteccoes de anomalias encontradas.
+Armazena as estruturas de engenharia, subestacoes eletricas, predios e historicos de voo de drone com todas as deteccoes de anomalias encontradas, alem do acervo documental e tecnico da Biblioteca.
 
 * **Caminho no Firestore:** `projects/{projectId}`
 * **Identificador do Documento (`projectId`):** UUID v4 unico gerado pelo backend.
@@ -118,35 +118,42 @@ Armazena as estruturas de engenharia, subestacoes eletricas, predios e historico
 | :--- | :--- | :--- | :--- |
 | `id` | String | Sim | Identificador unico do projeto (UUID). |
 | `userId` | String | Sim | UID do administrador que criou o projeto. |
-| `name` | String | Sim | Nome da instalacao (ex: "Subestacao Salvador Norte"). |
+| `name` | String | Sim | Nome da instalacao (ex: "Subestacao Salvador Norte" ou "Pavilhao de Aulas"). |
 | `address` | String | Sim | Localizacao geografica ou endereco de campo. |
-| `type` | String | Sim | Tipologia do ativo (ex: "Subestacao", "Predio", "Linha"). |
+| `type` | String | Sim | Tipologia / Caracterizacao geral do ativo (ex: "Subestacao", "Predio", "Linha"). |
 | `responsible` | String | Sim | Nome do engenheiro responsavel tecnico. |
-| `coverImageUrl` | String | Nao | URL da foto de capa de apresentacao do projeto. |
+| `coverImageUrl` | String | Nao | URL da foto de capa (upload customizado ou link externo). |
 | `buildingYear` | String | Nao | Ano de construcao da infraestrutura. |
-| `builtArea` | String | Nao | Area total construida em metros quadrados. |
-| `facadeTypology`| String | Nao | Tipo de fachada (ex: "Pintura Acrilica", "Pastilha", "Vidro"). |
-| `roofTypology` | String | Nao | Tipo de cobertura (ex: "Telha Ceramica", "Fibrocimento"). |
-| `bimModelUrl` | String | Nao | Link para o modelo BIM/IFC tridimensional caso exista. |
+| `builtArea` | String | Nao | Area total construida em metros quadrados ($m^2$). |
+| `facadeTypology`| String | Nao | Tipo de fachada sob a categoria de Sistemas (ex: "Pintura Acrilica", "Pastilha", "Vidro"). |
+| `roofTypology` | String | Nao | Tipo de cobertura/telhado sob a categoria de Sistemas (ex: "Telha Ceramica", "Fibrocimento"). |
+| `buildingAcronym` | String | Nao | Sigla identificadora da edificacao ou instalacao. |
+| `unitDirector` | String | Nao | Diretor ou responsavel institucional da unidade. |
+| `bimModelUrl` | String | Nao | Link para o modelo BIM/IFC tridimensional principal caso exista. |
 | `omniverseLink` | String | Nao | Link de integracao com visualizador NVIDIA Omniverse. |
 | `modules` | Object | Sim | Modulos ativos: `{ progress: bool, security: bool, maintenance: bool }`. |
-| `inspections` | Array<Object> | Sim | Lista cronologica de todas as inspecoes realizadas no ativo. |
+| `inspections` | Array<IInspection> | Sim | Lista cronologica de todas as inspecoes (passadas e de projetos). |
+| `cadFiles` | Array<ILibraryFile> | Nao | Projetos e desenhos tecnicos 2D (.DWG, .DXF, .PDF). |
+| `bimFiles` | Array<ILibraryFile> | Nao | Modelos 3D e arquivos BIM (.IFC, .RVT, etc.). |
+| `photogrammetryProducts` | Array<IPhotogrammetryBatch> | Nao | Levantamentos e produtos fotogrametricos organizados em lotes por data. |
+| `onlyLibrary` | Boolean | Nao | Se `true`, indica que o ativo foi cadastrado exclusivamente pela Biblioteca e nao deve ser exibido na listagem de Projetos (fluxo unidirecional). |
 
 ---
 
 ### 4.1. Estrutura de Inspecao (`inspections[]`)
 
-Cada elemento dentro da lista `inspections` representa uma campanha de inspecao realizada por drone ou equipe terrestre:
+Cada elemento dentro da lista `inspections` representa uma campanha de inspecao realizada por drone, equipe terrestre ou acervo historico:
 
 | Campo | Tipo | Descricao |
 | :--- | :--- | :--- |
 | `id` | String | Identificador unico da inspecao (UUID). |
-| `inspectionType` | String | Tipo da inspecao (ex: "Voo Termografico", "Rotina Semestral"). |
+| `inspectionType` | String | Tipo da inspecao (ex: "Voo Termografico", "Rotina Semestral", "Historico"). |
 | `inspectionObjective` | String | Objetivo tecnico da missao. |
 | `inspectionDate` | String | Data da captura dos dados (formato YYYY-MM-DD). |
-| `inspectionResponsible` | String | Engenheiro de campo responsavel pelo voo. |
+| `inspectionResponsible` | String | Engenheiro de campo responsavel pelo voo ou registro. |
+| `isPast` | Boolean | Se `true`, indica inspecao passada cadastrada via Biblioteca (permite upload livre de imagens e nao executa IA). Se `false` ou omitido, e uma inspecao originaria do modulo de Projetos (somente leitura na Biblioteca). |
 | `orthoStatus` | String | Status de processamento atual da ortofoto (ou `null` se concluido). |
-| `images` | Array<IImage> | Colecao de fotos individuais analisadas. |
+| `images` | Array<IImage> | Colecao de fotos individuais analisadas ou arquivadas. |
 | `orthoResults` | Array<IOrthoResult> | Colecao de ortomosaicos GeoTIFF processados com analise geoespacial. |
 
 ---
@@ -208,6 +215,48 @@ Possui tanto as coordenadas em pixels sobre a ortofoto quanto as coordenadas geo
   "maintenanceResponsible": "Eletricista de Alta Tensao",
   "maintenanceNotes": "Substituicao completa do elemento isolador avariado.",
   "maintenanceCost": 650.00
+}
+```
+
+---
+
+### 4.4. Estrutura de Arquivos e Lotes da Biblioteca (`ILibraryFile` e `IPhotogrammetryBatch`)
+
+Utilizada para o acervo tecnico e documental da edificacao dentro do modulo da Biblioteca (`cadFiles`, `bimFiles`, `photogrammetryProducts`):
+
+#### A. Arquivo Tecnico da Biblioteca (`ILibraryFile`):
+Representa um arquivo individual armazenado (DWG, DXF, PDF, IFC, RVT, LAS, OBJ, etc.):
+```typescript
+{
+  "id": "lib_3c4d5e6f",
+  "name": "Planta_Baixa_Pavimento_Terreo.dwg",
+  "url": "https://firebasestorage.googleapis.com/.../Planta_Baixa.dwg",
+  "size": 1458920,
+  "uploadedAt": "2026-09-28T10:30:00.000Z",
+  "format": "dwg",
+  "category": "Arquitetura"
+}
+```
+
+#### B. Lote de Produtos Fotogrametricos por Data (`IPhotogrammetryBatch`):
+Agrupa arquivos e produtos derivados de levantamentos aereos organizados por missao/data:
+```typescript
+{
+  "id": "photo_batch_89a0b1",
+  "date": "2026-08-15",
+  "title": "Levantamento Aereo Fachada Norte",
+  "responsible": "Equipe de Drones GETEC",
+  "description": "Nuvem de pontos densa e modelo tridimensional gerado via fotogrametria.",
+  "files": [
+    {
+      "id": "lib_f1a2b3",
+      "name": "nuvem_de_pontos.las",
+      "url": "https://firebasestorage.googleapis.com/.../nuvem.las",
+      "size": 84520100,
+      "uploadedAt": "2026-08-15T16:00:00.000Z",
+      "format": "las"
+    }
+  ]
 }
 ```
 

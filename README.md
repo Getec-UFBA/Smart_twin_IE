@@ -1,6 +1,10 @@
 # Smart Twin IE Platform (Smart Inspects)
 
-Plataforma web para visualização, análise e gerenciamento de inspeções técnicas e gêmeos digitais de infraestrutura elétrica. O sistema integra um **frontend React (Vite)**, um **backend Node.js (Express/Firebase)** e um **serviço de Inteligência Artificial (FastAPI/YOLO)** em Python para detecção de anomalias e análise geoespacial de ortofotos.
+Plataforma web para visualização, análise e gerenciamento de inspeções técnicas, acervo documental e gêmeos digitais de engenharia civil e infraestrutura. O sistema integra um **frontend React (Vite)**, um **backend Node.js (Express/Firebase)** e um **serviço de Inteligência Artificial (FastAPI/YOLO)** em Python para detecção de anomalias e análise geoespacial de ortofotos.
+
+A plataforma divide-se em dois eixos operacionais principais:
+* **Projetos:** Gestão de gêmeos digitais 3D (BIM/IFC), mapas interativos de voos de drone, inferência com inteligência artificial para detecção de patologias, revisão técnica e planos de ação.
+* **Biblioteca:** Repositório técnico e documental organizado por edificação em 4 pilares (Inspeções separadas por data, Projetos CAD, Modelos BIM e Levantamentos Fotogramétricos), com suporte a inspeções históricas e sincronização segura com os projetos.
 
 ---
 
@@ -8,8 +12,8 @@ Plataforma web para visualização, análise e gerenciamento de inspeções téc
 
 O projeto é dividido em três serviços principais dispostos no repositório:
 
-1. **`frontend/` (React + Vite)**: Interface do usuário para mapas interativos, exibição de gêmeos digitais, relatórios e gestão de inspeções. (Porta `5173`)
-2. **`backend/` (Node.js + Express + TypeScript)**: API central, autenticação, gerenciamento de relatórios (Puppeteer PDF), integração com o Firebase Firestore e Storage. (Porta `3001`)
+1. **`frontend/` (React + Vite)**: Interface do usuário para navegação em mapas interativos, exibição de gêmeos digitais, acervo documental na Biblioteca, relatórios e gestão de usuários. (Porta `5173`)
+2. **`backend/` (Node.js + Express + TypeScript)**: API central, autenticação com cadastro aberto, gerenciamento de relatórios (Puppeteer PDF), integração com o Firebase Firestore e Storage. (Porta `3001`)
 3. **`ai-service/` (Python + FastAPI + YOLO)**: Microserviço de visão computacional e análise geoespacial para identificação de componentes, defeitos e processamento de ortofotos GeoTIFF. (Porta `8001`)
 
 ---

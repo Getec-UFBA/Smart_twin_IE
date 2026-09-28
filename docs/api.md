@@ -64,7 +64,7 @@ Arquivo responsavel: [`backend/src/controllers/UserController.ts`](../backend/sr
 ### 3.1. Finalizar Cadastro de Usuario
 * **Metodo / Rota:** `POST /users`
 * **Permissao:** Publico (chamado logo apos o usuario criar a conta no Firebase Auth).
-* **Descricao:** Valida se o e-mail esta na lista de autorizados, aplica a `role` configurada previamente pelo admin e grava o documento em `users/{uid}`.
+* **Descricao:** Registra o perfil do usuario no Firestore em `users/{uid}`. Nao exige pre-autorizacao previa (auto-cadastro liberado). Caso o e-mail conste previamente na tabela `authorized_emails`, sua `role` predefinida e aplicada; caso contrario, assume `role: 'user'` por padrao.
 * **Corpo da Requisicao:**
   ```json
   {
@@ -76,11 +76,34 @@ Arquivo responsavel: [`backend/src/controllers/UserController.ts`](../backend/sr
   }
   ```
 * **Resposta de Sucesso (201 Created):** Retorna o objeto do usuario salvo.
-* **Resposta de Erro (400 Bad Request):** `"Este e-mail nao esta autorizado para cadastro."`
+* **Resposta de Erro (400 Bad Request):** `"Erro ao registrar usuário."`
 
-### 3.2. Autorizar Novo E-mail (Pre-cadastro e Promocao)
+### 3.2. Listar Todos os Usuarios da Plataforma
+* **Metodo / Rota:** `GET /users`
+* **Permissao:** Autenticado (qualquer usuario autenticado pode visualizar todos os perfis cadastrados no Painel de Usuarios `/usuarios`).
+* **Descricao:** Retorna a relacao de todos os usuarios cadastrados com nome, empresa, e-mail, papel e avatar.
+* **Resposta de Sucesso (200 OK):**
+  ```json
+  [
+    {
+      "id": "cM65TfRPhJN8LjGSbtxI6bdgFPj1",
+      "name": "Matheus Rafael",
+      "email": "matheus@ufba.br",
+      "role": "admin",
+      "company": "GETEC UFBA",
+      "avatarUrl": "https://..."
+    }
+  ]
+  ```
+
+### 3.3. Obter Perfil de Usuario por ID
+* **Metodo / Rota:** `GET /users/:id`
+* **Permissao:** Autenticado.
+* **Descricao:** Retorna os dados publicos do perfil de um usuario especifico.
+
+### 3.4. Autorizar Novo E-mail (Pre-cadastro e Promocao)
 * **Metodo / Rota:** `POST /users/authorize`
-* **Permissao:** Exclusivo Admin (`role: 'admin'`).
+* **Permissao:** Autenticado / Admin.
 * **Descricao:** Grava a permissao na colecao `authorized_emails`. Se o usuario ja existir, atualiza imediatamente seu papel no Firestore e nas Custom Claims do Firebase Auth.
 * **Corpo da Requisicao:**
   ```json
@@ -96,23 +119,10 @@ Arquivo responsavel: [`backend/src/controllers/UserController.ts`](../backend/sr
   }
   ```
 
-### 3.3. Listar E-mails Autorizados
+### 3.5. Listar E-mails Autorizados
 * **Metodo / Rota:** `GET /users/authorized`
-* **Permissao:** Exclusivo Admin (`role: 'admin'`).
-* **Descricao:** Retorna a lista de todos os e-mails liberados, pendentes ou ja cadastrados.
-* **Resposta de Sucesso (200 OK):**
-  ```json
-  [
-    {
-      "email": "engenheiro@empresa.com",
-      "role": "admin",
-      "status": "registered",
-      "authorizedAt": { "_seconds": 1789691845, "_nanoseconds": 438000000 },
-      "registeredAt": { "_seconds": 1789691845, "_nanoseconds": 438000000 },
-      "uid": "cM65TfRPhJN8LjGSbtxI6bdgFPj1"
-    }
-  ]
-  ```
+* **Permissao:** Autenticado.
+* **Descricao:** Retorna a lista de todos os e-mails liberados, pendentes ou ja cadastrados na tabela de controle.
 
 ---
 
@@ -174,19 +184,24 @@ Arquivo responsavel: [`backend/src/controllers/ProjectController.ts`](../backend
 * **Permissao:** Autenticado.
 * **Descricao:** Retorna todos os projetos visiveis.
 
-### 6.2. Criar Novo Projeto
+### 6.2. Criar Novo Projeto / Edificacao
 * **Metodo / Rota:** `POST /projects`
 * **Permissao:** Exclusivo Admin.
 * **Corpo da Requisicao:**
   ```json
   {
-    "name": "Subestacao Salvador Norte",
-    "address": "Salvador - BA",
-    "type": "Subestacao Eletrica",
+    "name": "Pavilhao de Aulas Glauber Rocha",
+    "address": "Campus Ondina - Salvador, BA",
+    "type": "Edificacao Educacional",
     "responsible": "Eng. Matheus Rafael",
-    "buildingYear": "2018",
-    "builtArea": "1500",
-    "coverImageUrl": "https://...",
+    "buildingYear": "2015",
+    "builtArea": "3200",
+    "facadeTypology": "Pintura Acrilica sobre Argamassa",
+    "roofTypology": "Telha Metalica Termoacustica",
+    "buildingAcronym": "PAF-III",
+    "unitDirector": "Prof. Coordenador",
+    "coverImageUrl": "https://firebasestorage.googleapis.com/.../capa.jpg",
+    "onlyLibrary": false,
     "modules": {
       "progress": true,
       "security": true,
@@ -194,11 +209,13 @@ Arquivo responsavel: [`backend/src/controllers/ProjectController.ts`](../backend
     }
   }
   ```
+  > **Nota sobre a Imagem de Capa:** A foto de capa (`coverImageUrl`) e opcional. Ao criar a edificacao pelo modal da Biblioteca ou de Projetos, o usuario pode selecionar um arquivo local que e enviado ao Cloud Storage, ou manter sem capa (o sistema exibe uma capa padrao).
+  > **Nota sobre `onlyLibrary`:** Quando enviado como `true` (criacao feita na Biblioteca), a edificacao nao sera listada na pagina de Projetos (`/projetos`), garantindo o fluxo unidirecional.
 
 ### 6.3. Detalhes de um Projeto
 * **Metodo / Rota:** `GET /projects/:id`
 * **Permissao:** Autenticado.
-* **Descricao:** Retorna o objeto integral do projeto incluindo todas as inspecoes, fotos, ortofotos anotadas e patologias.
+* **Descricao:** Retorna o objeto integral do projeto incluindo todas as inspecoes, fotos, ortofotos anotadas, patologias, acervo CAD, modelos BIM e lotes fotogrametricos.
 
 ### 6.4. Criar Inspecao em um Projeto
 * **Metodo / Rota:** `POST /projects/:projectId/inspections`
@@ -209,9 +226,11 @@ Arquivo responsavel: [`backend/src/controllers/ProjectController.ts`](../backend
     "inspectionType": "Voo de Drone com Termografia",
     "inspectionObjective": "Mapeamento termografico de paineis e isoladores",
     "inspectionDate": "2026-09-20",
-    "inspectionResponsible": "Eng. Responsavel"
+    "inspectionResponsible": "Eng. Responsavel",
+    "isPast": false
   }
   ```
+  > `isPast`: Quando `true`, indica que a inspecao foi criada diretamente na **Biblioteca** como acervo historico documental (habilita upload livre de fotos sem disparar inferencia YOLO nem plano de acao). Quando `false` ou omitido, refere-se a uma inspecao orientada a gemeo digital criada no modulo de Projetos.
 
 ### 6.5. Atualizar Manutencao de Deteccoes / Patologias
 * **Metodo / Rota:** `PATCH /projects/:projectId/inspections/:inspectionId/detections`
@@ -235,6 +254,47 @@ Arquivo responsavel: [`backend/src/controllers/ProjectController.ts`](../backend
 * **Resposta de Sucesso (200 OK):**
   * `Content-Type: application/pdf`
   * `Content-Disposition: attachment; filename=relatorio-inspecao-<id>.pdf`
+
+---
+
+### 6.7. Endpoints da Biblioteca Tecnica e Acervo Documental
+
+Modulo responsavel: [`backend/src/controllers/ProjectController.ts`](../backend/src/controllers/ProjectController.ts#L828-L934)
+
+#### 6.7.1. Upload de Imagens em Inspecao da Biblioteca
+* **Metodo / Rota:** `POST /projects/:projectId/inspections/:inspectionId/images`
+* **Permissao:** Autenticado.
+* **Descricao:** Salva uma lista de fotos no array `images` de uma inspecao (utilizado na Biblioteca para fotos historicas com `isPast: true`). Inspecoes originarias de Projetos (`!isPast`) sao tratadas como somente leitura na Biblioteca para preservar a integridade das deteccoes do gemeo digital.
+* **Corpo da Requisicao:**
+  ```json
+  {
+    "images": [
+      {
+        "url": "https://firebasestorage.googleapis.com/.../foto1.jpg",
+        "originalName": "foto1.jpg",
+        "size": 2048576
+      }
+    ]
+  }
+  ```
+
+#### 6.7.2. Gerenciamento de Projetos CAD
+* **Adicionar Arquivo CAD:** `POST /projects/:projectId/library/cad`
+  * Corpo: `{ "file": { "id": "...", "name": "Planta.dwg", "url": "https://...", "size": 1024, "uploadedAt": "..." } }`
+* **Excluir Arquivo CAD:** `DELETE /projects/:projectId/library/cad/:fileId`
+
+#### 6.7.3. Gerenciamento de Modelos BIM
+* **Adicionar Modelo BIM:** `POST /projects/:projectId/library/bim`
+  * Corpo: `{ "file": { "id": "...", "name": "Estrutura.ifc", "url": "https://...", "size": 5242880, "uploadedAt": "..." } }`
+* **Excluir Modelo BIM:** `DELETE /projects/:projectId/library/bim/:fileId`
+
+#### 6.7.4. Gerenciamento de Levantamentos Fotogrametricos
+* **Criar Lote Fotogrametrico por Data:** `POST /projects/:projectId/library/photogrammetry`
+  * Corpo: `{ "batch": { "id": "...", "date": "2026-08-15", "title": "Campanha Norte", "description": "...", "files": [] } }`
+* **Adicionar Arquivos a Lote Existente:** `POST /projects/:projectId/library/photogrammetry/:batchId/files`
+  * Corpo: `{ "files": [ { "id": "...", "name": "nuvem.las", "url": "https://...", "size": 10485760, "uploadedAt": "..." } ] }`
+* **Excluir Lote Fotogrametrico Inteiro:** `DELETE /projects/:projectId/library/photogrammetry/:batchId`
+* **Excluir Arquivo Especifico de um Lote:** `DELETE /projects/:projectId/library/photogrammetry/:batchId/files/:fileId`
 
 ---
 

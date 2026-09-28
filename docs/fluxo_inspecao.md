@@ -14,6 +14,7 @@
 5. [Etapa 4: Revisao Humana (Human-in-the-Loop)](#5-etapa-4-revisao-humana-human-in-the-loop)
 6. [Etapa 5: Gestao de Patologias e Status de Manutencao](#6-etapa-5-gestao-de-patologias-e-status-de-manutencao)
 7. [Etapa 6: Geracao e Emissao do Relatorio Tecnico em PDF](#7-etapa-6-geracao-e-emissao-do-relatorio-tecnico-em-pdf)
+8. [Dupla Modalidade: Projetos vs. Biblioteca](#8-dupla-modalidade-projetos-vs-biblioteca)
 
 ---
 
@@ -169,3 +170,22 @@ Modulo responsavel: [`backend/src/services/ReportService.ts`](../backend/src/ser
 3. **Renderizacao no Cloud Run:** O backend envia o HTML para `POST /generate-pdf` no microservico de IA.
 4. **Motor Chromium Nativo:** O Chromium (gerenciado via Playwright) renderiza o documento e imprime o PDF em formato A4 com qualidade grafica total.
 5. **Download Seguro:** O arquivo binario e transmitido de volta ao navegador do usuario como anexo (`relatorio-inspecao-<id>.pdf`), finalizando com sucesso o ciclo da inspecao.
+
+---
+
+## 8. Dupla Modalidade: Projetos vs. Biblioteca
+
+A plataforma organiza as campanhas de inspecao em dois eixos complementares:
+
+| Caracteristica | Inspecoes de Projeto (`!isPast`) | Inspecoes da Biblioteca (`isPast: true`) |
+| :--- | :--- | :--- |
+| **Origem de Cadastro** | Modulo de Projetos (`/projetos` ou modal interno) | Modulo da Biblioteca (`/biblioteca/:id`) |
+| **Finalidade** | Gemeo Digital, inferencia YOLO, revisao pericial e plano de acao | Repositorio documental, memorial tecnico e acervo historico |
+| **Inferencia IA (YOLO)** | Sim (deteccao automatica de anomalias em fotos e ortofotos) | Nao (armazenamento documental puro sem custo computacional) |
+| **Plano de Acao / Manutencao** | Sim (gestao de status `pending`/`resolved`, custos e notas) | Nao (apenas catalogacao cronologica e consulta visual) |
+| **Upload de Fotos** | Via fluxo assistido de revisao de IA (`process-images` ou `process-ortho`) | Upload livre de fotos direto na aba da inspecao |
+| **Edicao na Biblioteca** | **Somente Leitura** (bloqueado para proteger as deteccoes do gemeo digital) | **Totalmente Editavel** (adicionar/remover fotos a qualquer momento) |
+| **Relatorio PDF Pericial** | Sim (estatisticas C01-C10, fotos recortadas, custos e conformidade) | Nao aplicavel (foco em repositorio) |
+| **Sincronizacao** | Aparece automaticamente na Biblioteca organizada por data | Exclusiva da Biblioteca |
+| **Visualizacao Espacial** | Integrada ao modelo 3D / ortomosaico interativo com pins | Visualizacao em galeria / carrossel de fotos tecnicas |
+

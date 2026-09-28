@@ -125,7 +125,7 @@ Atua como o cerebro operacional da plataforma: gerencia autenticacao, autorizaco
   * `authorizeRole`: Intercepta rotas e bloqueia o acesso com erro 403 caso o papel do usuario nao esteja na lista permitida (ex: rotas exclusivas de administradores).
 
 ### 4.7. Modelos de Tipagem (`src/models/`)
-* [src/models/IProject.ts](../backend/src/models/IProject.ts): Contrato de dados TypeScript para `IProject`, `IInspection`, `IImage`, `IDetection`, `IOrthoResult` e `IGeoDetection`.
+* [src/models/IProject.ts](../backend/src/models/IProject.ts): Contrato de dados TypeScript para `IProject`, `IInspection`, `IImage`, `IDetection`, `IOrthoResult`, `IGeoDetection`, `ILibraryFile` e `IPhotogrammetryBatch`.
 * [src/models/IUser.ts](../backend/src/models/IUser.ts): Contrato de dados TypeScript para o perfil do usuario (`id`, `email`, `role`, `company`, etc.).
 
 ### 4.8. Configuracao (`src/config/`)
@@ -155,21 +155,24 @@ Interface grafica responsiva para engenheiros e inspetores navegarem pelos gemeo
 
 ### 5.3. Paginas da Aplicacao (`src/pages/`)
 * [src/pages/Home/](../frontend/src/pages/Home): Landing page institucional apresentando a proposta do Smart Twin IE, tecnologias e parceiros (GETEC / UFBA).
+* [src/pages/Home/](../frontend/src/pages/Home): Landing page institucional apresentando a proposta do Smart Twin IE, tecnologias e parceiros (GETEC / UFBA).
 * [src/pages/Login/](../frontend/src/pages/Login): Tela de login com e-mail e senha, validacao de credenciais e link para recuperacao.
-* [src/pages/RegisterUser/](../frontend/src/pages/RegisterUser): Tela publica de conclusao de cadastro para usuarios cujo e-mail foi previamente autorizado por um administrador.
+* [src/pages/RegisterUser/](../frontend/src/pages/RegisterUser): Tela de auto-cadastro direto para novos usuarios, sem necessidade de autorizacao previa por administrador.
 * [src/pages/ForgotPassword/](../frontend/src/pages/ForgotPassword) e [src/pages/ChangePassword/](../frontend/src/pages/ChangePassword): Fluxo de redefinicao de senha com perguntas de seguranca e token.
-* [src/pages/AdminDashboard/](../frontend/src/pages/AdminDashboard): Painel exclusivo para administradores (`role === 'admin'`). Permite pré-autorizar novos e-mails, definir o nivel de acesso (`admin` ou `user`) e auditar os usuarios cadastrados.
-* [src/pages/Projetos/](../frontend/src/pages/Projetos): Listagem de projetos cadastrados com filtros de busca, criacao de novos projetos e acesso aos detalhes tecnicos.
-* [src/pages/ProjectView/](../frontend/src/pages/ProjectView): Visualizador principal do gemeo digital. Apresenta o mapa interativo com suporte a ortofotos anotadas, camadas Leaflet/OpenStreetMap, marcadores de anomalias detectadas pela IA e upload de novos voos de drone.
+* [src/pages/AdminDashboard/](../frontend/src/pages/AdminDashboard): Painel de **Usuarios** (`/usuarios`). Permite que todos os usuarios autenticados visualizem os perfis dos demais membros da plataforma e, para administradores (`role === 'admin'`), possibilita a gestao de papeis e acessos.
+* [src/pages/Projetos/](../frontend/src/pages/Projetos): Listagem de projetos cadastrados com filtros de busca, criacao de novos projetos e acesso aos detalhes tecnicos e gemeos digitais.
+* [src/pages/ProjectView/](../frontend/src/pages/ProjectView): Visualizador principal do gemeo digital 3D. Apresenta o modelo BIM/IFC, mapa interativo com suporte a ortofotos anotadas, camadas Leaflet/OpenStreetMap, marcadores de anomalias detectadas pela IA e upload de novos voos de drone.
+* [src/pages/Biblioteca/](../frontend/src/pages/Biblioteca): Acervo documental e historico de edificacoes. Permite criar projetos na Biblioteca informando Ano Construido, Area Quadrada (m²), Tipo Geral, Sistemas (Fachada e Telhado/Cobertura) e Imagem de Capa via upload de arquivo.
+* [src/pages/BibliotecaView/](../frontend/src/pages/BibliotecaView): Visualizacao da edificacao na Biblioteca estruturada em 4 pilares: 1. Inspeções (historicas e sincronizadas da aba Projetos em modo somente-leitura); 2. Projetos CAD (.DWG, .DXF, .PDF por disciplina); 3. Modelos BIM (.IFC, .RVT); 4. Levantamentos Fotogrametricos (lotes de voo por data e download de produtos).
 * [src/pages/ProjectResults/](../frontend/src/pages/ProjectResults): Painel de indicadores quantitativos, metricas de conformidade, contagem de anomalias e estatisticas da inspecao.
 * [src/pages/ReviewImages/](../frontend/src/pages/ReviewImages): Interface de revisao humana onde engenheiros inspecionam as fotos classificadas pelo modelo YOLO, podendo validar ou ajustar deteccoes.
 * [src/pages/Profile/](../frontend/src/pages/Profile): Gestao de informacoes cadastrais do usuario e upload de foto de avatar.
 * [src/pages/OtherModules/](../frontend/src/pages/OtherModules): Hub para extensao de novos modulos futuros da plataforma.
 
 ### 5.4. Componentes Reutilizaveis (`src/components/`)
-* [src/components/Layout/](../frontend/src/components/Layout): Estrutura mestre contendo a barra superior (Navbar), botoes de idioma, tema e perfil, envolvendo o conteudo principal com a Sidebar.
-* [src/components/Sidebar/](../frontend/src/components/Sidebar): Barra lateral de navegacao retratil. Oculta ou exibe dinamicamente o link do Painel Administrativo de acordo com a role do usuario logado (`isAdmin`).
-* [src/components/ProtectedRoute/](../frontend/src/components/ProtectedRoute): Componente de guarda de rota. Redireciona usuarios nao autenticados para `/login` e bloqueia quem nao tiver o papel exigido (ex: `roles={['admin']}`).
+* [src/components/Layout/](../frontend/src/components/Layout): Estrutura mestre contendo a barra superior (Navbar), botoes de idioma, tema e perfil, envolvendo o conteudo com a Sidebar retratil.
+* [src/components/Sidebar/](../frontend/src/components/Sidebar): Barra lateral de navegacao retratil (fechada por padrao). Contem links para Inicio (`/`), Projetos (`/projetos`), Biblioteca (`/biblioteca`) e Usuarios (`/usuarios`). Permanece oculta na tela interna do gemeo digital 3D (`/projetos/:id`) para maximizar o espaco de visualizacao.
+* [src/components/ProtectedRoute/](../frontend/src/components/ProtectedRoute): Componente de guarda de rota. Redireciona usuarios nao autenticados para `/login` e valida as permissoes necessarias para rotas restritas.
 * [src/components/MaintenanceFeedback/](../frontend/src/components/MaintenanceFeedback): Modal interativo para resolucao e controle de manutencoes em lote em anomalias identificadas.
 * [src/components/PasswordInput/](../frontend/src/components/PasswordInput): Campo de entrada de senha reutilizavel com icone de alternancia de visibilidade (mostrar/ocultar senha).
 * [src/components/LanguageSwitcher/](../frontend/src/components/LanguageSwitcher) e [src/components/ThemeToggleSwitch/](../frontend/src/components/ThemeToggleSwitch): Controles visuais de selecao de idioma e modo claro/escuro.
