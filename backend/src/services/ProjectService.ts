@@ -425,6 +425,36 @@ class ProjectService {
     await this.projectRepository.delete(projectId);
   }
 
+  public async updateInspection(
+    projectId: string,
+    inspectionId: string,
+    data: {
+      inspectionObjective?: string;
+      inspectionType?: string;
+      inspectionDate?: string;
+      inspectionResponsible?: string;
+    }
+  ): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const updatedInspections = project.inspections?.map(inspection => {
+      if (inspection.id === inspectionId) {
+        return {
+          ...inspection,
+          ...(data.inspectionObjective !== undefined && { inspectionObjective: data.inspectionObjective }),
+          ...(data.inspectionType !== undefined && { inspectionType: data.inspectionType }),
+          ...(data.inspectionDate !== undefined && { inspectionDate: data.inspectionDate }),
+          ...(data.inspectionResponsible !== undefined && { inspectionResponsible: data.inspectionResponsible }),
+        };
+      }
+      return inspection;
+    }) || [];
+
+    const updatedProject = await this.projectRepository.update(projectId, { inspections: updatedInspections });
+    return updatedProject!;
+  }
+
   public async deleteInspection(projectId: string, inspectionId: string): Promise<void> {
     const project = await this.projectRepository.findById(projectId);
     if (!project) throw new Error('Projeto não encontrado.');
@@ -598,6 +628,36 @@ class ProjectService {
         return {
           ...b,
           files: b.files.filter(f => f.id !== fileId)
+        };
+      }
+      return b;
+    }) || [];
+
+    const updated = await this.projectRepository.update(projectId, { photogrammetryProducts: batches });
+    return updated!;
+  }
+
+  public async updatePhotogrammetryBatch(
+    projectId: string,
+    batchId: string,
+    data: {
+      title?: string;
+      date?: string;
+      responsible?: string;
+      description?: string;
+    }
+  ): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const batches = project.photogrammetryProducts?.map(b => {
+      if (b.id === batchId) {
+        return {
+          ...b,
+          ...(data.title !== undefined && { title: data.title }),
+          ...(data.date !== undefined && { date: data.date }),
+          ...(data.responsible !== undefined && { responsible: data.responsible }),
+          ...(data.description !== undefined && { description: data.description }),
         };
       }
       return b;

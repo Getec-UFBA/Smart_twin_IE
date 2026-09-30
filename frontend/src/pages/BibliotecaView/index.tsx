@@ -22,13 +22,15 @@ import {
   FaCube, 
   FaMapMarkedAlt, 
   FaFileAlt,
-  FaInfoCircle
+  FaInfoCircle,
+  FaEdit
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../config/firebase';
 import type { IProject, IInspection, IImage, ILibraryFile, IPhotogrammetryBatch } from '../../models/IProject';
+import EditLibraryProjectModal from '../../components/EditLibraryProjectModal';
 import './style.css';
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -45,6 +47,9 @@ const BibliotecaView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ActiveTabType>('inspections');
 
+  // --- EDIÇÃO DA EDIFICAÇÃO (PROJETO) ---
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+
   // --- PILAR 1: INSPEÇÕES (SEPARADAS POR DATA) ---
   const [activeInspection, setActiveInspection] = useState<IInspection | null>(null);
   const [showCreateInspModal, setShowCreateInspModal] = useState(false);
@@ -53,6 +58,14 @@ const BibliotecaView: React.FC = () => {
   const [newInspDate, setNewInspDate] = useState('');
   const [newInspResponsible, setNewInspResponsible] = useState(user?.name || '');
   const [creatingInsp, setCreatingInsp] = useState(false);
+
+  // Edição de inspeção
+  const [showEditInspModal, setShowEditInspModal] = useState(false);
+  const [editInspObjective, setEditInspObjective] = useState('');
+  const [editInspType, setEditInspType] = useState('Visual');
+  const [editInspDate, setEditInspDate] = useState('');
+  const [editInspResponsible, setEditInspResponsible] = useState('');
+  const [savingInsp, setSavingInsp] = useState(false);
 
   // Upload de fotos da inspeção
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +103,14 @@ const BibliotecaView: React.FC = () => {
   const [uploadingPhotoGram, setUploadingPhotoGram] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<IPhotogrammetryBatch | null>(null);
   const [photoGramFileToDelete, setPhotoGramFileToDelete] = useState<ILibraryFile | null>(null);
+
+  // Edição de lote fotogramétrico
+  const [showEditBatchModal, setShowEditBatchModal] = useState(false);
+  const [editBatchTitle, setEditBatchTitle] = useState('');
+  const [editBatchDate, setEditBatchDate] = useState('');
+  const [editBatchResponsible, setEditBatchResponsible] = useState('');
+  const [editBatchDescription, setEditBatchDescription] = useState('');
+  const [savingBatch, setSavingBatch] = useState(false);
 
   const fetchProject = async () => {
     if (!id) return;
@@ -330,6 +351,39 @@ const BibliotecaView: React.FC = () => {
     }
   };
 
+  const handleOpenEditInspection = (insp: IInspection) => {
+    setEditInspObjective(insp.inspectionObjective || '');
+    setEditInspType(insp.inspectionType || 'Visual');
+    setEditInspDate(insp.inspectionDate || '');
+    setEditInspResponsible(insp.inspectionResponsible || '');
+    setShowEditInspModal(true);
+  };
+
+  const handleSaveInspection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project || !activeInspection) return;
+    setSavingInsp(true);
+    try {
+      const payload = {
+        inspectionObjective: editInspObjective,
+        inspectionType: editInspType,
+        inspectionDate: editInspDate,
+        inspectionResponsible: editInspResponsible,
+      };
+      const response = await api.put(`/projects/${project.id}/inspections/${activeInspection.id}`, payload);
+      const updatedProject: IProject = response.data;
+      setProject(updatedProject);
+      const updatedInsp = updatedProject.inspections?.find(i => i.id === activeInspection.id) || null;
+      setActiveInspection(updatedInsp);
+      setShowEditInspModal(false);
+    } catch (err) {
+      console.error('Erro ao salvar inspeção:', err);
+      alert('Erro ao salvar as informações da inspeção.');
+    } finally {
+      setSavingInsp(false);
+    }
+  };
+
   const filteredPhotos = useMemo(() => {
     if (!activeInspection || !activeInspection.images) return [];
     if (!searchPhotoTerm.trim()) return activeInspection.images;
@@ -531,6 +585,39 @@ const BibliotecaView: React.FC = () => {
     }
   };
 
+  const handleOpenEditBatch = (batch: IPhotogrammetryBatch) => {
+    setEditBatchTitle(batch.title || '');
+    setEditBatchDate(batch.date || '');
+    setEditBatchResponsible(batch.responsible || '');
+    setEditBatchDescription(batch.description || '');
+    setShowEditBatchModal(true);
+  };
+
+  const handleSaveBatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project || !activeBatch) return;
+    setSavingBatch(true);
+    try {
+      const payload = {
+        title: editBatchTitle,
+        date: editBatchDate,
+        responsible: editBatchResponsible,
+        description: editBatchDescription,
+      };
+      const response = await api.put(`/projects/${project.id}/library/photogrammetry/${activeBatch.id}`, payload);
+      const updatedProject: IProject = response.data;
+      setProject(updatedProject);
+      const updatedBatch = updatedProject.photogrammetryProducts?.find(b => b.id === activeBatch.id) || null;
+      setActiveBatch(updatedBatch);
+      setShowEditBatchModal(false);
+    } catch (err) {
+      console.error('Erro ao salvar levantamento fotogramétrico:', err);
+      alert('Erro ao salvar as alterações do levantamento.');
+    } finally {
+      setSavingBatch(false);
+    }
+  };
+
   if (loading) {
     return (
       <Container className="pt-5 text-center">
@@ -566,13 +653,17 @@ const BibliotecaView: React.FC = () => {
 
           <div className="project-quick-info mt-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <div>
-              <div className="d-flex align-items-center gap-2">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
                 <FaFolder className="fs-3" style={{ color: '#10b981' }} />
                 <h2 className="mb-0 fw-bold">{project.name}</h2>
                 <Badge bg="primary" className="ms-2">{project.type}</Badge>
+                {project.buildingAcronym && (
+                  <Badge bg="secondary" className="ms-1">{project.buildingAcronym}</Badge>
+                )}
               </div>
               <p className="text-muted mb-0 mt-1">
                 {project.address} &bull; Responsável: {project.responsible || 'Engenharia'}
+                {project.unitDirector && <span> &bull; Direção: {project.unitDirector}</span>}
               </p>
               {(project.buildingYear || project.builtArea || project.facadeTypology || project.roofTypology) && (
                 <div className="d-flex flex-wrap gap-2 mt-2">
@@ -598,6 +689,16 @@ const BibliotecaView: React.FC = () => {
                   )}
                 </div>
               )}
+            </div>
+
+            <div>
+              <Button
+                variant="outline-primary"
+                className="d-flex align-items-center gap-2"
+                onClick={() => setShowEditProjectModal(true)}
+              >
+                <FaEdit /> Editar Edificação
+              </Button>
             </div>
           </div>
         </div>
@@ -738,15 +839,26 @@ const BibliotecaView: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  {activeInspection.isPast && (
+                  <div className="d-flex align-items-center gap-2">
                     <Button 
-                      variant="outline-danger" 
+                      variant="outline-secondary" 
                       size="sm"
-                      onClick={() => setInspectionToDelete(activeInspection)}
+                      className="d-flex align-items-center gap-1"
+                      onClick={() => handleOpenEditInspection(activeInspection)}
                     >
-                      <FaTrashAlt /> Excluir Inspeção
+                      <FaEdit /> Editar Inspeção
                     </Button>
-                  )}
+                    {activeInspection.isPast && (
+                      <Button 
+                        variant="outline-danger" 
+                        size="sm"
+                        className="d-flex align-items-center gap-1"
+                        onClick={() => setInspectionToDelete(activeInspection)}
+                      >
+                        <FaTrashAlt /> Excluir Inspeção
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* DROPZONE DE UPLOAD - APENAS PARA INSPEÇÕES CRIADAS NA BIBLIOTECA */}
@@ -1159,9 +1271,19 @@ const BibliotecaView: React.FC = () => {
                           onChange={(e) => handlePhotoGramFilesUpload(e.target.files)} 
                         />
                         <Button 
+                          variant="outline-secondary" 
+                          size="sm" 
+                          className="d-flex align-items-center gap-1"
+                          onClick={() => handleOpenEditBatch(activeBatch)}
+                          title="Editar Levantamento"
+                        >
+                          <FaEdit /> Editar
+                        </Button>
+                        <Button 
                           variant="outline-danger" 
                           size="sm" 
                           onClick={() => setBatchToDelete(activeBatch)}
+                          title="Excluir Levantamento"
                         >
                           <FaTrashAlt />
                         </Button>
@@ -1480,6 +1602,155 @@ const BibliotecaView: React.FC = () => {
             <Button variant="secondary" size="sm" onClick={() => setPhotoGramFileToDelete(null)}>Cancelar</Button>
             <Button variant="danger" size="sm" onClick={confirmDeletePhotoGramFile}>Excluir</Button>
           </Modal.Footer>
+        </Modal>
+
+        {/* MODAL EDITAR EDIFICAÇÃO (PROJETO) */}
+        <EditLibraryProjectModal
+          show={showEditProjectModal}
+          onHide={() => setShowEditProjectModal(false)}
+          project={project}
+          onSuccess={(updatedProject) => {
+            setProject(updatedProject);
+          }}
+        />
+
+        {/* MODAL EDITAR INSPEÇÃO */}
+        <Modal show={showEditInspModal} onHide={() => !savingInsp && setShowEditInspModal(false)} centered>
+          <Form onSubmit={handleSaveInspection}>
+            <Modal.Header closeButton>
+              <Modal.Title className="fw-bold d-flex align-items-center gap-2">
+                <FaEdit style={{ color: '#10b981' }} /> Editar Informações da Inspeção
+              </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold">Objetivo / Título da Inspeção *</Form.Label>
+                <Form.Control 
+                  type="text" 
+                  value={editInspObjective} 
+                  onChange={(e) => setEditInspObjective(e.target.value)} 
+                  required 
+                />
+              </Form.Group>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-semibold">Tipo de Inspeção</Form.Label>
+                    <Form.Select 
+                      value={editInspType} 
+                      onChange={(e) => setEditInspType(e.target.value)}
+                    >
+                      <option value="Visual">Visual</option>
+                      <option value="Termográfica">Termográfica</option>
+                      <option value="Estrutural">Estrutural</option>
+                      <option value="Drone / Voo">Drone / Voo</option>
+                      <option value="Rotina">Rotina</option>
+                      <option value="Outro">Outro</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-semibold">Data da Inspeção *</Form.Label>
+                    <Form.Control 
+                      type="date" 
+                      value={editInspDate} 
+                      onChange={(e) => setEditInspDate(e.target.value)} 
+                      required 
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold">Responsável Técnico</Form.Label>
+                <Form.Control 
+                  type="text" 
+                  value={editInspResponsible} 
+                  onChange={(e) => setEditInspResponsible(e.target.value)} 
+                />
+              </Form.Group>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={() => setShowEditInspModal(false)} disabled={savingInsp}>
+                Cancelar
+              </Button>
+              <Button 
+                variant="primary" 
+                type="submit" 
+                disabled={savingInsp}
+                style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+              >
+                {savingInsp ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </Modal.Footer>
+          </Form>
+        </Modal>
+
+        {/* MODAL EDITAR LEVANTAMENTO FOTOGRAMÉTRICO */}
+        <Modal show={showEditBatchModal} onHide={() => !savingBatch && setShowEditBatchModal(false)} centered>
+          <Form onSubmit={handleSaveBatch}>
+            <Modal.Header closeButton>
+              <Modal.Title className="fw-bold d-flex align-items-center gap-2">
+                <FaEdit style={{ color: '#10b981' }} /> Editar Levantamento Fotogramétrico
+              </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold">Título do Levantamento *</Form.Label>
+                <Form.Control 
+                  type="text" 
+                  value={editBatchTitle} 
+                  onChange={(e) => setEditBatchTitle(e.target.value)} 
+                  required 
+                />
+              </Form.Group>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-semibold">Data do Voo/Levantamento *</Form.Label>
+                    <Form.Control 
+                      type="date" 
+                      value={editBatchDate} 
+                      onChange={(e) => setEditBatchDate(e.target.value)} 
+                      required 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="fw-semibold">Responsável</Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      value={editBatchResponsible} 
+                      onChange={(e) => setEditBatchResponsible(e.target.value)} 
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold">Descrição <span className="text-muted fw-normal small">(opcional)</span></Form.Label>
+                <Form.Control 
+                  as="textarea" 
+                  rows={3} 
+                  value={editBatchDescription} 
+                  onChange={(e) => setEditBatchDescription(e.target.value)} 
+                />
+              </Form.Group>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={() => setShowEditBatchModal(false)} disabled={savingBatch}>
+                Cancelar
+              </Button>
+              <Button 
+                variant="primary" 
+                type="submit" 
+                disabled={savingBatch}
+                style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+              >
+                {savingBatch ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+            </Modal.Footer>
+          </Form>
         </Modal>
 
         {/* LIGHTBOX DE FOTOS DA INSPEÇÃO */}

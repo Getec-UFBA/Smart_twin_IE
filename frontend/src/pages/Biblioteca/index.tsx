@@ -11,13 +11,16 @@ import {
   FaMapMarkerAlt, 
   FaUser, 
   FaInfoCircle, 
-  FaCalendarAlt 
+  FaCalendarAlt,
+  FaEdit,
+  FaTrashAlt
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../config/firebase';
 import type { IProject } from '../../models/IProject';
+import EditLibraryProjectModal from '../../components/EditLibraryProjectModal';
 import './style.css';
 
 const Biblioteca: React.FC = () => {
@@ -31,11 +34,20 @@ const Biblioteca: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  // Estados para edição e exclusão de projeto
+  const [editingProject, setEditingProject] = useState<IProject | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<IProject | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   // Formulário de novo projeto
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [type, setType] = useState('Edifício');
   const [responsible, setResponsible] = useState(user?.name || '');
+  const [buildingAcronym, setBuildingAcronym] = useState('');
+  const [unitDirector, setUnitDirector] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const coverFileInputRef = useRef<HTMLInputElement>(null);
@@ -94,6 +106,8 @@ const Biblioteca: React.FC = () => {
         address,
         type,
         responsible: responsible || user?.name || 'Responsável',
+        buildingAcronym,
+        unitDirector,
         coverImageUrl: uploadedCoverUrl || defaultFallback,
         modules: { progress: true, security: true, maintenance: true },
         bimModelUrl: '',
@@ -109,6 +123,9 @@ const Biblioteca: React.FC = () => {
       setShowCreateModal(false);
       setName('');
       setAddress('');
+      setResponsible(user?.name || '');
+      setBuildingAcronym('');
+      setUnitDirector('');
       setCoverFile(null);
       setCoverPreview(null);
       if (coverFileInputRef.current) coverFileInputRef.current.value = '';
@@ -125,6 +142,22 @@ const Biblioteca: React.FC = () => {
       alert('Erro ao criar projeto.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!projectToDelete) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/projects/${projectToDelete.id}`);
+      setProjects(prev => prev.filter(p => p.id !== projectToDelete.id));
+      setShowDeleteModal(false);
+      setProjectToDelete(null);
+    } catch (err) {
+      console.error('Erro ao excluir edificação:', err);
+      alert('Erro ao excluir a edificação.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -292,7 +325,14 @@ const Biblioteca: React.FC = () => {
 
                     <Card.Body className="d-flex flex-direction-column flex-column justify-content-between">
                       <div>
-                        <h4 className="bib-project-title mb-2">{project.name}</h4>
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <h4 className="bib-project-title mb-0">{project.name}</h4>
+                          {project.buildingAcronym && (
+                            <Badge bg="light" text="dark" className="border ms-2">
+                              {project.buildingAcronym}
+                            </Badge>
+                          )}
+                        </div>
                         
                         <div className="bib-project-meta mb-3">
                           <div className="meta-row">
@@ -303,6 +343,12 @@ const Biblioteca: React.FC = () => {
                             <FaUser className="meta-icon" style={{ color: '#10b981' }} />
                             <span className="truncate">{project.responsible || 'Responsável'}</span>
                           </div>
+                          {project.unitDirector && (
+                            <div className="meta-row">
+                              <span className="small text-muted fw-semibold">Direção:</span>
+                              <span className="truncate">{project.unitDirector}</span>
+                            </div>
+                          )}
                         </div>
 
                         {(project.buildingYear || project.builtArea || project.facadeTypology || project.roofTypology) && (
@@ -341,16 +387,42 @@ const Biblioteca: React.FC = () => {
                           </span>
                         </div>
 
-                        <Button 
-                          variant="primary" 
-                          className="w-100 d-flex align-items-center justify-content-center gap-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/biblioteca/${project.id}`);
-                          }}
-                        >
-                          <FaFolder /> {t('library.open_project', 'Abrir Edificação')}
-                        </Button>
+                        <div className="d-flex gap-2">
+                          <Button 
+                            variant="primary" 
+                            className="flex-grow-1 d-flex align-items-center justify-content-center gap-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/biblioteca/${project.id}`);
+                            }}
+                          >
+                            <FaFolder /> {t('library.open_project', 'Abrir Edificação')}
+                          </Button>
+                          <Button 
+                            variant="outline-secondary" 
+                            className="d-flex align-items-center justify-content-center px-3"
+                            title="Editar Informações da Edificação"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingProject(project);
+                              setShowEditModal(true);
+                            }}
+                          >
+                            <FaEdit />
+                          </Button>
+                          <Button 
+                            variant="outline-danger" 
+                            className="d-flex align-items-center justify-content-center px-3"
+                            title="Excluir Edificação"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProjectToDelete(project);
+                              setShowDeleteModal(true);
+                            }}
+                          >
+                            <FaTrashAlt />
+                          </Button>
+                        </div>
                       </div>
                     </Card.Body>
                   </Card>
@@ -370,12 +442,12 @@ const Biblioteca: React.FC = () => {
             </Modal.Header>
             <Modal.Body>
               <Row>
-                <Col md={12}>
+                <Col md={8}>
                   <Form.Group className="mb-3">
                     <Form.Label>Nome do Projeto / Edificação *</Form.Label>
                     <Form.Control 
                       type="text" 
-                      placeholder="Ex: Viaduto dos Imigrantes - Registro Histórico" 
+                      placeholder="Ex: Pavilhão de Aulas da Federação" 
                       value={name} 
                       onChange={(e) => setName(e.target.value)} 
                       required 
@@ -383,15 +455,41 @@ const Biblioteca: React.FC = () => {
                   </Form.Group>
                 </Col>
 
-                <Col md={12}>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Sigla da Edificação <span className="text-muted fw-normal small">(opcional)</span></Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Ex: PAF I" 
+                      value={buildingAcronym} 
+                      onChange={(e) => setBuildingAcronym(e.target.value)} 
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Row>
+                <Col md={8}>
                   <Form.Group className="mb-3">
                     <Form.Label>Endereço / Localização *</Form.Label>
                     <Form.Control 
                       type="text" 
-                      placeholder="Ex: Rodovia dos Imigrantes, Km 42" 
+                      placeholder="Ex: Rua Aristides Novis, 02 - Federação" 
                       value={address} 
                       onChange={(e) => setAddress(e.target.value)} 
                       required 
+                    />
+                  </Form.Group>
+                </Col>
+
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Diretor / Unidade <span className="text-muted fw-normal small">(opcional)</span></Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Ex: Prof. Dr. Silva" 
+                      value={unitDirector} 
+                      onChange={(e) => setUnitDirector(e.target.value)} 
                     />
                   </Form.Group>
                 </Col>
@@ -584,6 +682,38 @@ const Biblioteca: React.FC = () => {
               </Button>
             </Modal.Footer>
           </Form>
+        </Modal>
+
+        {/* MODAL DE EDIÇÃO DE PROJETO */}
+        <EditLibraryProjectModal
+          show={showEditModal}
+          onHide={() => {
+            setShowEditModal(false);
+            setEditingProject(null);
+          }}
+          project={editingProject}
+          onSuccess={(updatedProject) => {
+            setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, ...updatedProject } : p));
+          }}
+        />
+
+        {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+        <Modal show={showDeleteModal} onHide={() => !deleting && setShowDeleteModal(false)} centered size="sm">
+          <Modal.Header closeButton>
+            <Modal.Title className="fs-6 fw-bold text-danger">Excluir Edificação</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            Tem certeza que deseja excluir a edificação <strong>{projectToDelete?.name}</strong>?
+            Esta ação removerá todos os dados, inspeções e arquivos vinculados.
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(false)} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleConfirmDelete} disabled={deleting}>
+              {deleting ? 'Excluindo...' : 'Excluir'}
+            </Button>
+          </Modal.Footer>
         </Modal>
       </Container>
     </div>

@@ -48,7 +48,13 @@ class ProjectRepository {
 
   public async update(projectId: string, updatedData: Partial<IProject>): Promise<IProject | undefined> {
     const { id, ...data } = updatedData;
-    await this.collection.doc(projectId).update(data as any);
+    const cleanedData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleanedData[key] = value;
+      }
+    }
+    await this.collection.doc(projectId).update(cleanedData);
     return this.findById(projectId);
   }
 }

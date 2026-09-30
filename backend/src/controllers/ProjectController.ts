@@ -743,6 +743,24 @@ class ProjectController {
     }
   }
 
+  public async updateInspection(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, inspectionId } = req.params;
+    const { inspectionObjective, inspectionType, inspectionDate, inspectionResponsible } = req.body;
+    const projectService = new ProjectService();
+
+    try {
+      const updatedProject = await projectService.updateInspection(projectId, inspectionId, {
+        inspectionObjective,
+        inspectionType,
+        inspectionDate,
+        inspectionResponsible
+      });
+      return res.json(updatedProject);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
   public async generateInspectionPdfReport(req: AuthRequest, res: Response): Promise<Response> {
     const { projectId, inspectionId } = req.params;
     const reportService = new ReportService();
@@ -917,6 +935,24 @@ class ProjectController {
     const projectService = new ProjectService();
     try {
       const updated = await projectService.deletePhotogrammetryBatch(projectId, batchId);
+      return res.json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  public async updatePhotogrammetryBatch(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, batchId } = req.params;
+    const { title, date, responsible, description } = req.body;
+    const projectService = new ProjectService();
+
+    try {
+      const updated = await projectService.updatePhotogrammetryBatch(projectId, batchId, {
+        title,
+        date,
+        responsible,
+        description
+      });
       return res.json(updated);
     } catch (error: any) {
       return res.status(400).json({ error: error.message });
