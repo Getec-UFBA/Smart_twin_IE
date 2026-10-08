@@ -2,16 +2,16 @@ import React from 'react';
 import { Nav } from 'react-bootstrap';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FaHome, FaFolder, FaUserPlus } from 'react-icons/fa';
+import { FaHome, FaFolder, FaUsers, FaBook } from 'react-icons/fa';
 import './style.css';
 
 interface SidebarProps {
   isOpen: boolean;
   toggleSidebar: () => void;
-  isAdmin: boolean;
+  isAdmin?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, isAdmin }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const { t } = useTranslation();
 
   const handleNavLinkClick = () => {
@@ -32,16 +32,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, isAdmin }) => 
           <FaFolder />
           <span>{t('sidebar.projects')}</span>
         </Nav.Link>
-
-        {isAdmin && (
-          <>
-            <div className="sidebar-section-label">{t('sidebar.administration')}</div>
-            <Nav.Link as={NavLink} to="/admin" onClick={handleNavLinkClick}>
-              <FaUserPlus />
-              <span>{t('sidebar.admin_dashboard')}</span>
-            </Nav.Link>
-          </>
-        )}
+        <Nav.Link as={NavLink} to="/biblioteca" onClick={handleNavLinkClick}>
+          <FaBook />
+          <span>{t('sidebar.library', 'Biblioteca')}</span>
+        </Nav.Link>
+        <Nav.Link as={NavLink} to="/usuarios" onClick={handleNavLinkClick}>
+          <FaUsers />
+          <span>{t('sidebar.users', 'Usuários')}</span>
+        </Nav.Link>
       </Nav>
     </div>
   );

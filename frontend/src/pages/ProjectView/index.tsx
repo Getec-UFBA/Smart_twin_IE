@@ -8,11 +8,26 @@ import path from 'path-browserify';
 import { 
   FaCog, FaTrash, FaUpload, FaDownload, 
   FaClipboardList, FaProjectDiagram, FaMapMarkedAlt, 
-  FaImages, FaChartLine, FaPlus, FaCloudUploadAlt, FaTools,
-  FaChevronLeft, FaChevronRight, FaHammer 
+  FaImages, FaChartLine, FaPlus, FaMinus, FaCloudUploadAlt, FaTools,
+  FaChevronLeft, FaChevronRight, FaHammer, FaSyncAlt, FaCalendarAlt,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import type { IProject, IInspection } from '../../models/IProject';
 import MaintenanceFeedback from '../../components/MaintenanceFeedback';
+
+const isInspectionFuture = (dateStr?: string) => {
+  if (!dateStr) return false;
+  try {
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    return dateStr > todayStr;
+  } catch (error) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const inspDate = new Date(year, month - 1, day);
+    return inspDate > today;
+  }
+};
 
 const ProjectView: React.FC = () => {
   const { t } = useTranslation();
@@ -27,11 +42,29 @@ const ProjectView: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const [progressStatus, setProgressStatus] = useState('');
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Controle de Visualização
   const [activeInspection, setActiveInspection] = useState<IInspection | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+
+  const duplicateFiles = selectedFiles.filter(file => {
+    if (!activeInspection) return false;
+    const nameLower = file.name.toLowerCase();
+    const inImages = activeInspection.images?.some(img => 
+      img.originalName?.toLowerCase() === nameLower || 
+      img.url.toLowerCase().endsWith(`/${nameLower}`) ||
+      img.url.toLowerCase().endsWith(`-${nameLower}`)
+    );
+    const inOrtho = activeInspection.orthoResults?.some(ortho => 
+      ortho.originalName?.toLowerCase() === nameLower || 
+      ortho.url.toLowerCase().endsWith(`/${nameLower}`) ||
+      ortho.url.toLowerCase().endsWith(`-${nameLower}`)
+    );
+    return inImages || inOrtho;
+  });
   
   const [newInspectionObjective, setNewInspectionObjective] = useState('');
   const [inspectionType, setInspectionType] = useState('Preventiva');
@@ -42,9 +75,69 @@ const ProjectView: React.FC = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<IProject>>({});
+  const [showConfirmEdit, setShowConfirmEdit] = useState(false);
   
   // Navegação de Imagens Expandidas
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
+
+  // Zoom e Pan para Visualização de Imagem
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const zoomContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Reseta zoom ao fechar ou trocar de imagem
+  useEffect(() => {
+    setZoomScale(1);
+    setZoomPosition({ x: 0, y: 0 });
+    setIsPanning(false);
+  }, [expandedImageIndex]);
+
+  // Hook para capturar wheel event com passive: false (evita scroll da página ao dar zoom com mouse wheel)
+  useEffect(() => {
+    const container = zoomContainerRef.current;
+    if (!container) return;
+
+    const preventDefaultWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomIntensity = 0.15;
+      
+      setZoomScale(prevScale => {
+        let newScale = prevScale + (e.deltaY < 0 ? zoomIntensity : -zoomIntensity);
+        newScale = Math.min(Math.max(1, newScale), 8);
+        if (newScale === 1) {
+          setZoomPosition({ x: 0, y: 0 });
+        }
+        return newScale;
+      });
+    };
+
+    container.addEventListener('wheel', preventDefaultWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', preventDefaultWheel);
+    };
+  }, [expandedImageIndex]);
+
+  // Handlers para pan (arrastar a imagem)
+  const handleMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (zoomScale === 1) return;
+    e.preventDefault();
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - zoomPosition.x, y: e.clientY - zoomPosition.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!isPanning) return;
+    e.preventDefault();
+    const newX = e.clientX - panStart.x;
+    const newY = e.clientY - panStart.y;
+    setZoomPosition({ x: newX, y: newY });
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsPanning(false);
+  };
 
   const fetchProject = useCallback(async () => {
     try {
@@ -109,17 +202,27 @@ const ProjectView: React.FC = () => {
         address: project.address,
         type: project.type,
         responsible: project.responsible,
+        buildingYear: project.buildingYear,
+        builtArea: project.builtArea,
+        roofTypology: project.roofTypology,
       });
+      setShowConfirmEdit(false);
       setShowEditModal(true);
     }
   };
 
-  const handleUpdateProject = async (e: React.FormEvent) => {
+  const handleSubmitEditForm = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowConfirmEdit(true);
+  };
+
+  const handleUpdateProject = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!project) return;
     try {
       await api.put(`/projects/${project.id}`, editFormData);
       setShowEditModal(false);
+      setShowConfirmEdit(false);
       fetchProject();
     } catch (err) {
       alert(t('project_view.error_update'));
@@ -165,8 +268,29 @@ const ProjectView: React.FC = () => {
     }, speed);
   };
 
+  const handleCancelProcessing = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+    }
+    setProcessing(false);
+    setProgress(0);
+    setProgressStatus('');
+  };
+
   const handleProcess = async () => {
     if (selectedFiles.length === 0 || !project || !activeInspection) return;
+    
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    
     setProcessing(true);
     setProgress(0);
     setProgressStatus(t('project_view.progress_starting'));
@@ -178,6 +302,7 @@ const ProjectView: React.FC = () => {
         const totalFiles = selectedFiles.length;
 
         for (let i = 0; i < totalFiles; i++) {
+          if (controller.signal.aborted) break;
           const file = selectedFiles[i];
           const formData = new FormData();
           formData.append('images', file);
@@ -188,6 +313,7 @@ const ProjectView: React.FC = () => {
           
           try {
             await api.post('/projects/process-images', formData, {
+              signal: controller.signal,
               onUploadProgress: (progressEvent: any) => {
                 const filePercent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
                 const totalPercent = Math.round(((successCount + failCount) * 100 + (filePercent * 0.9)) / totalFiles);
@@ -195,17 +321,30 @@ const ProjectView: React.FC = () => {
               }
             });
             successCount++;
-          } catch (err) {
+          } catch (err: any) {
+            if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+              console.log('Upload de imagens cancelado.');
+              break;
+            }
             console.error(`Falha ao processar ${file.name}:`, err);
             failCount++;
           }
           
+          if (controller.signal.aborted) break;
           setProgress(Math.round(((successCount + failCount) * 100) / totalFiles));
           
           if (i < totalFiles - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise<void>(resolve => {
+              const timeoutId = setTimeout(resolve, 1500);
+              controller.signal.addEventListener('abort', () => {
+                clearTimeout(timeoutId);
+                resolve();
+              });
+            });
           }
         }
+
+        if (controller.signal.aborted) return;
 
         if (successCount > 0) {
           setProgress(100);
@@ -231,6 +370,7 @@ const ProjectView: React.FC = () => {
         const currentOrthoCount = activeInspection.orthoResults?.length || 0;
 
         const config = {
+          signal: controller.signal,
           onUploadProgress: (progressEvent: any) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setProgress(percentCompleted * 0.4); 
@@ -246,6 +386,8 @@ const ProjectView: React.FC = () => {
 
         await api.post('/projects/process-ortho', formData, config);
         
+        if (controller.signal.aborted) return;
+
         setProgressStatus('A IA está recebendo o arquivo...');
         setProgress(95);
         
@@ -255,7 +397,12 @@ const ProjectView: React.FC = () => {
         const pollInterval = setInterval(async () => {
           attempts++;
           try {
-            const response = await api.get(`/projects/${project.id}`);
+            if (controller.signal.aborted) {
+              clearInterval(pollInterval);
+              pollIntervalRef.current = null;
+              return;
+            }
+            const response = await api.get(`/projects/${project.id}`, { signal: controller.signal });
             const updatedProject = response.data;
             const updatedInspection = updatedProject.inspections?.find((i: any) => i.id === activeInspection.id);
             
@@ -268,6 +415,7 @@ const ProjectView: React.FC = () => {
 
             if (newOrthoCount > currentOrthoCount) {
               clearInterval(pollInterval);
+              pollIntervalRef.current = null;
               setProject(updatedProject);
               setProgress(100);
               setProgressStatus('Processamento concluído com sucesso!');
@@ -278,22 +426,37 @@ const ProjectView: React.FC = () => {
               }, 2500);
             } else if (attempts >= maxAttempts) {
               clearInterval(pollInterval);
+              pollIntervalRef.current = null;
               setProgressStatus('Tempo esgotado. Verifique a dashboard em instantes.');
               setTimeout(() => {
                 setProcessing(false);
                 setShowUploadModal(false);
               }, 6000);
             }
-          } catch (err) {
+          } catch (err: any) {
+            if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+              clearInterval(pollInterval);
+              pollIntervalRef.current = null;
+              return;
+            }
             console.error('Polling error:', err);
           }
         }, 5000); // Polling mais rápido (5s) para pegar os status da IA
+        pollIntervalRef.current = pollInterval;
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+        console.log('Processamento cancelado pelo usuário.');
+        return;
+      }
       console.error('Erro no processamento:', err);
       alert(t('project_view.error_process'));
       setProcessing(false);
       setProgress(0);
+    } finally {
+      if (!controller.signal.aborted) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -357,21 +520,36 @@ const ProjectView: React.FC = () => {
             </div>
           </div>
 
-          {project.inspections?.map(insp => (
-            <div 
-              key={insp.id}
-              className={`inspection-item ${activeInspection?.id === insp.id ? 'active' : ''}`}
-              onClick={() => setActiveInspection(insp)}
-            >
-              <div className="inspection-icon">
-                {insp.orthoResults?.length ? <FaMapMarkedAlt className="text-primary" /> : <FaClipboardList />}
+          {project.inspections?.filter(insp => !insp.isPast).map(insp => {
+            const isFuture = isInspectionFuture(insp.inspectionDate);
+            return (
+              <div 
+                key={insp.id}
+                className={`inspection-item ${activeInspection?.id === insp.id ? 'active' : ''}`}
+                onClick={() => setActiveInspection(insp)}
+              >
+                <div className="inspection-icon">
+                  {isFuture ? (
+                    <FaCalendarAlt className="text-warning" />
+                  ) : insp.orthoResults?.length ? (
+                    <FaMapMarkedAlt className="text-primary" />
+                  ) : (
+                    <FaClipboardList />
+                  )}
+                </div>
+                <div className="inspection-info text-truncate">
+                  <h6 className="text-truncate">{insp.inspectionObjective}</h6>
+                  <span>
+                    {insp.inspectionDate} • {isFuture ? (
+                      <span className="text-warning fw-semibold">{t('project_view.scheduled_inspection')}</span>
+                    ) : (
+                      t('project_view.photos_count', { count: insp.images.length })
+                    )}
+                  </span>
+                </div>
               </div>
-              <div className="inspection-info text-truncate">
-                <h6 className="text-truncate">{insp.inspectionObjective}</h6>
-                <span>{insp.inspectionDate} • {t('project_view.photos_count', { count: insp.images.length })}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </aside>
 
@@ -384,14 +562,16 @@ const ProjectView: React.FC = () => {
             <Row>
               <Col md={4}>
                 <Card className="modern-card stat-card">
-                  <div className="stat-value">{project.inspections?.length || 0}</div>
+                  <div className="stat-value">
+                    {project.inspections?.filter(i => !i.isPast).length || 0}
+                  </div>
                   <div className="stat-label">{t('project_view.stat_total_inspections')}</div>
                 </Card>
               </Col>
               <Col md={4}>
                 <Card className="modern-card stat-card">
                   <div className="stat-value">
-                    {project.inspections?.reduce((acc, i) => acc + i.images.length, 0)}
+                    {project.inspections?.filter(i => !i.isPast).reduce((acc, i) => acc + i.images.length, 0) || 0}
                   </div>
                   <div className="stat-label">{t('project_view.stat_analyzed_photos')}</div>
                 </Card>
@@ -399,7 +579,7 @@ const ProjectView: React.FC = () => {
               <Col md={4}>
                 <Card className="modern-card stat-card">
                   <div className="stat-value">
-                    {project.inspections?.reduce((acc, i) => acc + (i.orthoResults?.length || 0), 0)}
+                    {project.inspections?.filter(i => !i.isPast).reduce((acc, i) => acc + (i.orthoResults?.length || 0), 0) || 0}
                   </div>
                   <div className="stat-label">{t('project_view.stat_processed_maps')}</div>
                 </Card>
@@ -417,22 +597,28 @@ const ProjectView: React.FC = () => {
         ) : (
           /* VISUALIZAÇÃO DA INSPEÇÃO ATIVA */
           <div className="animate__animated animate__fadeIn">
-            <div className="d-flex justify-content-between align-items-start project-header-panel">
-              <div>
-                <div className="d-flex align-items-center gap-2 mb-1">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 project-header-panel">
+              <div className="header-info-group">
+                <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
                   <h3 className="fw-bold mb-0">{activeInspection.inspectionObjective}</h3>
                   <Badge bg="success" className="bg-opacity-10 text-success">
                     {activeInspection.inspectionType === 'Preventiva' ? t('project_view.modal_insp_type_preventive') : t('project_view.modal_insp_type_corrective')}
                   </Badge>
+                  {isInspectionFuture(activeInspection.inspectionDate) && (
+                    <Badge bg="warning" className="text-dark bg-opacity-75">
+                      {t('project_view.scheduled_inspection')}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-muted mb-0">
                   <FaChartLine className="me-1" /> {activeInspection.inspectionDate} • Resp: {activeInspection.inspectionResponsible}
                 </p>
               </div>
-              <div className="d-flex gap-2">
+              <div className="project-action-buttons">
                 <Button 
                   variant="primary" 
-                  className="d-flex align-items-center gap-2"
+                  disabled={isInspectionFuture(activeInspection.inspectionDate)}
+                  title={isInspectionFuture(activeInspection.inspectionDate) ? t('project_view.scheduled_inspection_upload_blocked') : ''}
                   onClick={() => {
                     setSelectedFiles([]);
                     setProgress(0);
@@ -446,20 +632,28 @@ const ProjectView: React.FC = () => {
                   onClick={() => handleGenerateInspectionPdfReport(activeInspection.id)}
                   disabled={isGeneratingReport}
                 >
-                  {isGeneratingReport ? t('project_view.generating') : <><FaDownload className="me-2" /> PDF</>}
+                  {isGeneratingReport ? t('project_view.generating') : <><FaDownload /> PDF</>}
                 </Button>
                 <Button 
                   variant="outline-success" 
-                  className="d-flex align-items-center gap-2"
                   onClick={() => setShowMaintenanceModal(true)}
                 >
                   <FaHammer /> {t('project_view.maintenance', 'Manutenção')}
                 </Button>
-                <Button variant="outline-danger" onClick={() => handleDeleteInspection(activeInspection.id)}>
+                <Button variant="outline-danger" onClick={() => handleDeleteInspection(activeInspection.id)} title={t('project_view.delete_insp', 'Excluir Inspeção')}>
                   <FaTrash />
                 </Button>
               </div>
             </div>
+
+            {isInspectionFuture(activeInspection.inspectionDate) && (
+              <Alert variant="warning" className="d-flex align-items-center gap-2 mt-3 mb-4 animate__animated animate__fadeIn">
+                <FaCalendarAlt size={20} className="text-warning" />
+                <div>
+                  <strong>{t('project_view.scheduled_inspection')}:</strong> {t('project_view.scheduled_inspection_upload_blocked')}
+                </div>
+              </Alert>
+            )}
 
             {/* Seção de Ortomosaicos */}
             {activeInspection.orthoResults && activeInspection.orthoResults.length > 0 && (
@@ -534,7 +728,19 @@ const ProjectView: React.FC = () => {
       </main>
 
       {/* MODAL DE UPLOAD / PROCESSAMENTO */}
-      <Modal show={showUploadModal} onHide={() => !processing && setShowUploadModal(false)} centered size="lg">
+      <Modal 
+        show={showUploadModal} 
+        onHide={() => {
+          if (!processing) {
+            setShowUploadModal(false);
+            setSelectedFiles([]);
+          }
+        }} 
+        backdrop={processing ? 'static' : true}
+        keyboard={!processing}
+        centered 
+        size="lg"
+      >
         <Modal.Header closeButton={!processing}>
           <Modal.Title className="fw-bold">{t('project_view.modal_upload_title')}</Modal.Title>
         </Modal.Header>
@@ -544,7 +750,7 @@ const ProjectView: React.FC = () => {
               <Alert variant="info" className="border-0 rounded-4 mb-4">
                 {t('project_view.modal_upload_alert')} <strong>{activeInspection?.inspectionObjective}</strong>
               </Alert>
-
+ 
               <Form.Group className="mb-4 text-center">
                 <div className="d-flex justify-content-center gap-4">
                   <Form.Check
@@ -552,18 +758,24 @@ const ProjectView: React.FC = () => {
                     label={t('project_view.modal_p_type_images')}
                     name="pType"
                     checked={processingType === 'images'}
-                    onChange={() => setProcessingType('images')}
+                    onChange={() => {
+                      setProcessingType('images');
+                      setSelectedFiles([]);
+                    }}
                   />
                   <Form.Check
                     type="radio"
                     label={t('project_view.modal_p_type_ortho')}
                     name="pType"
                     checked={processingType === 'ortho'}
-                    onChange={() => setProcessingType('ortho')}
+                    onChange={() => {
+                      setProcessingType('ortho');
+                      setSelectedFiles([]);
+                    }}
                   />
                 </div>
               </Form.Group>
-
+ 
               <div 
                 className="p-5 border-2 border-dashed rounded-4 text-center bg-light"
                 style={{ border: '2px dashed #10b98144', cursor: 'pointer' }}
@@ -585,6 +797,37 @@ const ProjectView: React.FC = () => {
                 />
               </div>
 
+              {duplicateFiles.length > 0 && (
+                <Alert variant="warning" className="border-0 rounded-4 my-3 d-flex align-items-center gap-2 animate__animated animate__fadeIn">
+                  <FaExclamationTriangle size={20} className="text-warning" />
+                  <div>
+                    <strong>{t('project_view.duplicate_warning_title')}:</strong>{' '}
+                    {t('project_view.duplicate_warning_desc')}
+                  </div>
+                </Alert>
+              )}
+
+              {selectedFiles.length > 0 && (
+                <div className="mt-3 selected-files-list text-start" style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #eee', padding: '10px', borderRadius: '8px' }}>
+                  <div className="text-muted small mb-2 fw-semibold">{t('project_view.selected_files_list')}</div>
+                  {selectedFiles.map((file, index) => {
+                    const isDuplicate = duplicateFiles.includes(file);
+                    return (
+                      <div key={index} className="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <span className={`text-truncate small ${isDuplicate ? 'text-warning fw-semibold' : ''}`} style={{ maxWidth: '80%' }}>
+                          {file.name} {isDuplicate && ` (${t('project_view.duplicate_label')})`}
+                        </span>
+                        {isDuplicate && (
+                          <Badge bg="warning" className="text-dark bg-opacity-75 small">
+                            {t('project_view.duplicate_badge')}
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+ 
               <Button 
                 variant="primary" 
                 className="w-100 mt-4 py-2 fw-bold"
@@ -604,11 +847,18 @@ const ProjectView: React.FC = () => {
                 variant="success" 
                 style={{ height: '25px', borderRadius: '10px' }} 
               />
-              <p className="text-muted mt-3 small">
+              <p className="text-muted mt-3 mb-4 small">
                 {processingType === 'ortho' 
                   ? t('project_view.modal_process_ortho_tip') 
                   : t('project_view.modal_process_images_tip')}
               </p>
+              <Button 
+                variant="danger" 
+                className="px-4 py-2 fw-bold"
+                onClick={handleCancelProcessing}
+              >
+                {t('project_view.modal_cancel_process')}
+              </Button>
             </div>
           )}
         </Modal.Body>
@@ -677,11 +927,78 @@ const ProjectView: React.FC = () => {
                 <FaChevronLeft size={40} className="text-white opacity-50 hover-opacity-100" />
               </button>
 
-              <img 
-                src={activeInspection.images[expandedImageIndex].url} 
-                style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} 
-                alt="Fullscreen" 
-              />
+              <div 
+                ref={zoomContainerRef}
+                className="overflow-hidden position-relative w-100 d-flex align-items-center justify-content-center"
+                style={{ height: '85vh', cursor: zoomScale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
+              >
+                <img 
+                  src={activeInspection.images[expandedImageIndex].url} 
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '85vh', 
+                    objectFit: 'contain',
+                    transform: `translate(${zoomPosition.x}px, ${zoomPosition.y}px) scale(${zoomScale})`,
+                    transition: isPanning ? 'none' : 'transform 0.15s ease-out',
+                    userSelect: 'none'
+                  }} 
+                  alt="Fullscreen"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUpOrLeave}
+                  onMouseLeave={handleMouseUpOrLeave}
+                  draggable={false}
+                />
+              </div>
+
+              {/* Controle Flutuante de Zoom */}
+              <div 
+                className="position-absolute d-flex gap-2 p-2 bg-dark bg-opacity-75 rounded-pill shadow"
+                style={{ bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 12 }}
+              >
+                <Button 
+                  variant="outline-light" 
+                  size="sm" 
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(255,255,255,0.1)' }}
+                  onClick={() => {
+                    const newScale = Math.min(zoomScale + 0.5, 8);
+                    setZoomScale(newScale);
+                  }}
+                  title={t('project_view.zoom_in')}
+                >
+                  <FaPlus size={14} />
+                </Button>
+                <Button 
+                  variant="outline-light" 
+                  size="sm" 
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(255,255,255,0.1)' }}
+                  onClick={() => {
+                    const newScale = Math.max(zoomScale - 0.5, 1);
+                    if (newScale === 1) setZoomPosition({ x: 0, y: 0 });
+                    setZoomScale(newScale);
+                  }}
+                  disabled={zoomScale === 1}
+                  title={t('project_view.zoom_out')}
+                >
+                  <FaMinus size={14} />
+                </Button>
+                <Button 
+                  variant="outline-light" 
+                  size="sm" 
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(255,255,255,0.1)' }}
+                  onClick={() => {
+                    setZoomScale(1);
+                    setZoomPosition({ x: 0, y: 0 });
+                  }}
+                  disabled={zoomScale === 1 && zoomPosition.x === 0 && zoomPosition.y === 0}
+                  title={t('project_view.zoom_reset')}
+                >
+                  <FaSyncAlt size={14} />
+                </Button>
+              </div>
 
               {/* Botão Próximo */}
               <button 
@@ -697,14 +1014,99 @@ const ProjectView: React.FC = () => {
       </Modal>
 
       {/* MODAL EDITAR PROJETO */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered>
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg" centered>
         <Modal.Header closeButton><Modal.Title>{t('projects.modal_create_title')}</Modal.Title></Modal.Header>
         <Modal.Body>
-          <Form onSubmit={handleUpdateProject}>
-            <Form.Group className="mb-3"><Form.Label>{t('projects.modal_project_name')}</Form.Label><Form.Control value={editFormData.name || ''} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} /></Form.Group>
-            <Form.Group className="mb-3"><Form.Label>{t('projects.modal_address')}</Form.Label><Form.Control value={editFormData.address || ''} onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} /></Form.Group>
-            <Button variant="primary" type="submit" className="w-100">{t('profile.save_button')}</Button>
-          </Form>
+          {showConfirmEdit ? (
+            <div className="text-center py-4">
+              <h4 className="mb-3 fw-bold text-warning">Confirmar Alterações?</h4>
+              <p className="text-muted mb-4 text-center mx-auto" style={{ maxWidth: '450px' }}>
+                Você tem certeza de que deseja salvar as novas informações do projeto? 
+                Esta ação atualizará as especificações técnicas de forma permanente.
+              </p>
+              <div className="d-flex gap-3 justify-content-center">
+                <Button variant="outline-secondary" className="px-4" onClick={() => setShowConfirmEdit(false)}>
+                  Voltar e Editar
+                </Button>
+                <Button variant="primary" className="px-4" onClick={() => handleUpdateProject()}>
+                  Confirmar e Salvar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Form onSubmit={handleSubmitEditForm}>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_project_name')}</Form.Label>
+                    <Form.Control 
+                      required 
+                      value={editFormData.name || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_responsible')}</Form.Label>
+                    <Form.Control 
+                      required 
+                      value={editFormData.responsible || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, responsible: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={12}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_address')}</Form.Label>
+                    <Form.Control 
+                      value={editFormData.address || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, address: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_building_year')}</Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Ex: 2020" 
+                      value={editFormData.buildingYear || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, buildingYear: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_built_area')}</Form.Label>
+                    <Form.Control 
+                      type="text" 
+                      placeholder="Ex: 150" 
+                      value={editFormData.builtArea || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, builtArea: e.target.value })} 
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>{t('projects.modal_roof_typology')}</Form.Label>
+                    <Form.Select 
+                      value={editFormData.roofTypology || ''} 
+                      onChange={e => setEditFormData({ ...editFormData, roofTypology: e.target.value })}
+                    >
+                      <option value="">{t('projects.modal_select_roof')}</option>
+                      <option value="Fibrocimento">Fibrocimento</option>
+                      <option value="Cerâmico">Cerâmico</option>
+                      <option value="Concreto">Concreto</option>
+                      <option value="Metálico">Metálico</option>
+                      <option value="misto">misto</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Button variant="primary" type="submit" className="w-100 mt-3">{t('profile.save_button')}</Button>
+            </Form>
+          )}
         </Modal.Body>
       </Modal>
 

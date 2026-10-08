@@ -5,7 +5,7 @@ const isDevelopment = import.meta.env.MODE === 'development';
 
 // No Firebase, as requisições para /api são redirecionadas para as Functions.
 // Localmente, apontamos direto para a porta 3001 do backend standalone.
-const API_URL = isDevelopment ? 'http://localhost:3001' : '/api';
+const API_URL = isDevelopment ? 'http://localhost:3001/api' : '/api';
 
 const api = axios.create({
   baseURL: API_URL,

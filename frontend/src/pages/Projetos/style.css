@@ -176,3 +176,40 @@ body.dark .module-badge {
   border-radius: 24px;
   color: var(--text-muted);
 }
+
+@media (max-width: 768px) {
+  .search-filter-section {
+    margin-bottom: 28px;
+  }
+  
+  .filter-pills {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .filter-pill {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .empty-state-card {
+    padding: 32px 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .projects-container {
+    padding-bottom: 40px;
+  }
+
+  .project-card-img-wrapper {
+    height: 160px;
+  }
+
+  .project-card .card-body {
+    padding: 16px;
+  }
+}
+

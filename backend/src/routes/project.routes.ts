@@ -63,6 +63,13 @@ projectRouter.post(
   projectController.createInspection
 );
 
+// Route for updating inspection
+projectRouter.put(
+  '/:projectId/inspections/:inspectionId',
+  authorizeRole(['admin']),
+  projectController.updateInspection
+);
+
 // New route for deleting inspections
 projectRouter.delete(
   '/:projectId/inspections/:inspectionId',
@@ -82,6 +89,12 @@ projectRouter.delete(
   '/:projectId/inspections/:inspectionId/ortho/:orthoName',
   authorizeRole(['admin']),
   projectController.deleteOrthoFromInspection
+);
+
+// Route for saving multiple images to inspection (Biblioteca)
+projectRouter.post(
+  '/:projectId/inspections/:inspectionId/images',
+  projectController.addImages
 );
 
 // New route for saving image directly to inspection
@@ -109,5 +122,20 @@ projectRouter.post(
   authorizeRole(['admin']),
   projectController.create
 );
+
+// --- ROTAS BIBLIOTECA: CAD ---
+projectRouter.post('/:projectId/library/cad', projectController.addCadFile);
+projectRouter.delete('/:projectId/library/cad/:fileId', projectController.deleteCadFile);
+
+// --- ROTAS BIBLIOTECA: BIM ---
+projectRouter.post('/:projectId/library/bim', projectController.addBimFile);
+projectRouter.delete('/:projectId/library/bim/:fileId', projectController.deleteBimFile);
+
+// --- ROTAS BIBLIOTECA: PRODUTOS FOTOGRAMÉTRICOS (SEPARADOS POR DATA) ---
+projectRouter.post('/:projectId/library/photogrammetry', projectController.createPhotogrammetryBatch);
+projectRouter.put('/:projectId/library/photogrammetry/:batchId', projectController.updatePhotogrammetryBatch);
+projectRouter.post('/:projectId/library/photogrammetry/:batchId/files', projectController.addFilesToPhotogrammetryBatch);
+projectRouter.delete('/:projectId/library/photogrammetry/:batchId', projectController.deletePhotogrammetryBatch);
+projectRouter.delete('/:projectId/library/photogrammetry/:batchId/files/:fileId', projectController.deletePhotogrammetryFile);
 
 export default projectRouter;

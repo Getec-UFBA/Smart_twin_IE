@@ -33,12 +33,17 @@ export interface IGeoDetection {
 export interface IImage {
   url: string;
   detections?: IDetection[];
+  originalName?: string;
+  hash?: string;
+  size?: number;
 }
 
 export interface IOrthoResult {
   url: string;
   previewUrl?: string;
   detections: IGeoDetection[];
+  originalName?: string;
+  hash?: string;
 }
 
 // Nova interface IInspection (substitui IFolder)
@@ -51,6 +56,7 @@ export interface IInspection {
   images: IImage[];
   orthoResults?: IOrthoResult[];
   orthoStatus?: string | null;
+  isPast?: boolean;
 }
 export interface IProject {
   id: string;
@@ -76,4 +82,27 @@ export interface IProject {
   buildingAcronym?: string;
   unitDirector?: string;
   inspections?: IInspection[];
+  cadFiles?: ILibraryFile[];
+  bimFiles?: ILibraryFile[];
+  photogrammetryProducts?: IPhotogrammetryBatch[];
+  onlyLibrary?: boolean;
+}
+
+export interface ILibraryFile {
+  id: string;
+  name: string;
+  url: string;
+  size?: number;
+  uploadedAt: string;
+  format?: string;
+  category?: string;
+}
+
+export interface IPhotogrammetryBatch {
+  id: string;
+  date: string;
+  title: string;
+  responsible?: string;
+  description?: string;
+  files: ILibraryFile[];
 }

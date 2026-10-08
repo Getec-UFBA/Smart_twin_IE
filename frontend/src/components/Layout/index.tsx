@@ -19,30 +19,41 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Verifica se está dentro de um projeto (/projetos/:id, resultados, dashboard, etc.)
+  const isInsideProject = /^\/projetos\/.+/.test(location.pathname);
+
   const toggleSidebar = () => {
     setSidebarIsOpen(!sidebarIsOpen);
   };
 
-  // Verifica se a rota atual corresponde a /projetos/:id
-  const isProjectViewPage = /^\/projetos\/.+/.test(location.pathname);
-
   const getMainContentClassName = () => {
-    if (isProjectViewPage) {
+    if (isInsideProject) {
       return 'main-content no-sidebar';
     }
     return `main-content ${sidebarIsOpen ? 'sidebar-open' : 'sidebar-closed'}`;
   };
 
   return (
-    <div className="d-flex min-vh-100">
-      {!isProjectViewPage && <Sidebar isOpen={sidebarIsOpen} toggleSidebar={toggleSidebar} isAdmin={user?.role === 'admin'} />}
+    <div className="d-flex min-vh-100 position-relative">
+      {user && !isInsideProject && (
+        <>
+          <Sidebar isOpen={sidebarIsOpen} toggleSidebar={toggleSidebar} isAdmin={user?.role === 'admin'} />
+          {sidebarIsOpen && (
+            <div 
+              className="sidebar-backdrop d-md-none" 
+              onClick={toggleSidebar}
+              aria-hidden="true"
+            />
+          )}
+        </>
+      )}
       
       <div className={getMainContentClassName()}>
         <Navbar bg="dark" expand={false} variant="dark" fixed="top">
           <Container fluid>
             <div className="d-flex align-items-center">
-              {!isProjectViewPage && (
-                <Button variant="outline-light" onClick={toggleSidebar} className="me-2">
+              {user && !isInsideProject && (
+                <Button variant="outline-light" onClick={toggleSidebar} className="me-2" aria-label="Menu Lateral">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-list" viewBox="0 0 16 16">
                     <path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
                   </svg>

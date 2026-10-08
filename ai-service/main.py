@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Form
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 import cv2
 import numpy as np
 from ultralytics import YOLO
@@ -11,6 +12,12 @@ import uuid
 import httpx
 import asyncio
 from ortho_processor import OrthoProcessor
+
+try:
+    from playwright.async_api import async_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
 
 app = FastAPI()
 
@@ -146,6 +153,52 @@ async def switch_model(model_name: str):
         ortho_processor.model = model
         return {"message": "Switched to 'last'."}
     return {"message": "Invalid model."}
+
+class PdfReportRequest(BaseModel):
+    html: str
+
+@app.post("/generate-pdf")
+async def generate_pdf(payload: PdfReportRequest):
+    if not PLAYWRIGHT_AVAILABLE:
+        return JSONResponse(status_code=500, content={"error": "Playwright/Chromium não está instalado neste ambiente."})
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--no-first-run",
+                "--single-process"
+            ]
+        )
+        try:
+            page = await browser.new_page()
+            page.set_default_timeout(180000)
+            # Carrega o HTML completo do relatório
+            await page.set_content(payload.html, wait_until="networkidle", timeout=180000)
+            
+            # Aguarda renderização se houver flag no cliente
+            try:
+                await page.wait_for_function("window.renderComplete === true", timeout=15000)
+            except Exception:
+                pass
+
+            # Gera o PDF em formato A4
+            pdf_bytes = await page.pdf(
+                format="A4",
+                print_background=True,
+                margin={"top": "0px", "bottom": "0px", "left": "0px", "right": "0px"}
+            )
+            return Response(
+                content=pdf_bytes,
+                media_type="application/pdf",
+                headers={"Content-Disposition": "attachment; filename=relatorio.pdf"}
+            )
+        finally:
+            await browser.close()
 
 if __name__ == '__main__':
     import uvicorn

@@ -1,0 +1,266 @@
+.biblioteca-container {
+  padding-top: 32px;
+  padding-bottom: 60px;
+}
+
+.biblioteca-header h1 {
+  letter-spacing: -0.02em;
+  color: var(--bs-body-color);
+}
+
+/* STATS GRID */
+.biblioteca-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.bib-stat-card {
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.bib-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.bib-stat-icon.projects {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.bib-stat-icon.inspections {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.bib-stat-icon.photos {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.bib-stat-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bib-stat-val {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--bs-body-color);
+}
+
+/* BANNER */
+.bib-info-banner {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: var(--bs-body-color);
+}
+
+.bib-info-banner .info-icon {
+  color: #10b981;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+/* SEARCH CARD */
+.bib-search-card {
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.search-input-wrapper .search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #10b981;
+}
+
+.search-input-wrapper input {
+  width: 100%;
+  padding: 10px 16px 10px 40px;
+  border-radius: 10px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+}
+
+.search-input-wrapper input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.bib-type-select {
+  border-radius: 10px;
+  padding: 10px 16px;
+}
+
+/* PROJECT CARDS */
+.bib-project-card {
+  background: var(--bs-card-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 18px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.bib-project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.12);
+}
+
+.bib-card-img-wrapper {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+
+.bib-card-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.bib-project-card:hover .bib-card-img-wrapper img {
+  transform: scale(1.05);
+}
+
+.bib-type-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(4px);
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+
+.bib-project-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--bs-body-color);
+}
+
+.bib-project-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--bs-secondary-color);
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-icon {
+  font-size: 0.85rem;
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bib-card-counters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bib-counter-pill {
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+/* LOADING & EMPTY */
+.bib-loading,
+.bib-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.bib-empty-state .empty-icon {
+  font-size: 3.5rem;
+  color: #10b981;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+/* BOTOES VERDE GETEC */
+.biblioteca-container .btn-primary {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+.biblioteca-container .btn-primary:hover,
+.biblioteca-container .btn-primary:focus {
+  background-color: #059669;
+  border-color: #059669;
+}
+
+.biblioteca-container .btn-outline-primary {
+  color: #10b981;
+  border-color: #10b981;
+}
+
+.biblioteca-container .btn-outline-primary:hover,
+.biblioteca-container .btn-outline-primary:focus {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s ease-out;
+}

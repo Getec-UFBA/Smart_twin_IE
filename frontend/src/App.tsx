@@ -15,6 +15,8 @@ import ChangePassword from './pages/ChangePassword';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import ReviewImages from './pages/ReviewImages'; // Import the new component
+import Biblioteca from './pages/Biblioteca';
+import BibliotecaView from './pages/BibliotecaView';
 import { ThemeContext } from './contexts/ThemeContext';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -71,8 +73,23 @@ function App() {
             <ChangePassword />
           </ProtectedRoute>
         } />
+        <Route path="biblioteca" element={
+          <ProtectedRoute>
+            <Biblioteca />
+          </ProtectedRoute>
+        } />
+        <Route path="biblioteca/:id" element={
+          <ProtectedRoute>
+            <BibliotecaView />
+          </ProtectedRoute>
+        } />
+        <Route path="usuarios" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
         <Route path="admin" element={
-          <ProtectedRoute roles={['admin']}>
+          <ProtectedRoute>
             <AdminDashboard />
           </ProtectedRoute>
         } />

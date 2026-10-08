@@ -1,0 +1,15 @@
+.git
+.gitignore
+.gcloudignore
+.dockerignore
+venv/
+.venv/
+__pycache__/
+public/outputs/*
+!public/outputs/.gitkeep
+temp_*
+*.pyc
+*.pyo
+*.pyd
+.cache
+*.log

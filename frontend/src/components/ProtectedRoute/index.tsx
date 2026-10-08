@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
   roles?: Array<'admin' | 'user'>;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles: _roles }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -18,9 +18,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
     return <Navigate to="/login" replace />;
   }
 
+  // Branch sem controle de acesso: qualquer usuário autenticado tem acesso total
+  /*
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/" replace />; // Redireciona para home ou outra página de acesso negado
+    return <Navigate to="/" replace />;
   }
+  */
 
   return <>{children}</>;
 };

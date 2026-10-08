@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import crypto from 'crypto';
 import { storage } from '../config/firebase';
 import ProjectRepository from '../repositories/ProjectRepository';
-import { IProject, IOAE, IInspection, IDetection, IImage, IOrthoResult } from '../models/IProject';
+import { IProject, IOAE, IInspection, IDetection, IImage, IOrthoResult, ILibraryFile, IPhotogrammetryBatch } from '../models/IProject';
 
 interface ICreateRequest {
   userId: string;
@@ -10,17 +11,18 @@ interface ICreateRequest {
   address: string;
   type: string;
   responsible: string;
-  modules: string;
-  oaeData: string;
-  coverImageUrl: string; // URL já vinda do Firebase Storage (Frontend)
-  bimModelUrl: string;   // URL já vinda do Firebase Storage (Frontend)
-  oaeBimModelUrls: string[]; // Lista de URLs vindas do Frontend
+  modules?: any;
+  oaeData?: any;
+  coverImageUrl?: string; // URL já vinda do Firebase Storage (Frontend)
+  bimModelUrl?: string;   // URL já vinda do Firebase Storage (Frontend)
+  oaeBimModelUrls?: string[]; // Lista de URLs vindas do Frontend
   buildingYear?: string;
   builtArea?: string;
   facadeTypology?: string;
   roofTypology?: string;
   buildingAcronym?: string;
   unitDirector?: string;
+  onlyLibrary?: boolean;
 }
 
 export interface IUpdateRequest {
@@ -34,6 +36,7 @@ interface ICreateInspectionRequest {
   inspectionObjective: string;
   inspectionDate: string;
   inspectionResponsible: string;
+  isPast?: boolean;
 }
 
 interface ISaveImageToInspectionRequest {
@@ -71,13 +74,14 @@ class ProjectService {
     facadeTypology, 
     roofTypology,  
     buildingAcronym, 
-    unitDirector   
+    unitDirector,
+    onlyLibrary
   }: ICreateRequest): Promise<IProject> {
-    const parsedModules = JSON.parse(modules);
-    const parsedOaes = oaeData ? JSON.parse(oaeData) : [];
+    const parsedModules = typeof modules === 'string' ? JSON.parse(modules) : (modules || { progress: true, security: true, maintenance: true });
+    const parsedOaes = oaeData ? (typeof oaeData === 'string' ? JSON.parse(oaeData) : oaeData) : [];
 
     const oaeWithFiles: IOAE[] = parsedOaes.map((oae: any, index: number) => {
-      const oaeUrl = oaeBimModelUrls[index];
+      const oaeUrl = oaeBimModelUrls ? oaeBimModelUrls[index] : '';
       if (!oaeUrl) {
         throw new Error(`URL do modelo BIM não encontrada para a OAE: ${oae.name}`);
       }
@@ -95,19 +99,20 @@ class ProjectService {
       address,
       type,
       responsible,
-      coverImageUrl,
-      bimModelUrl,
+      coverImageUrl: coverImageUrl || '',
+      bimModelUrl: bimModelUrl || '',
       modules: parsedModules,
       oae: oaeWithFiles,
     };
 
-    if (parsedModules.maintenance) {
-      newProject.buildingYear = buildingYear;
-      newProject.builtArea = builtArea;
-      newProject.facadeTypology = facadeTypology;
-      newProject.roofTypology = roofTypology;
-      newProject.buildingAcronym = buildingAcronym;
-      newProject.unitDirector = unitDirector;
+    newProject.buildingYear = buildingYear;
+    newProject.builtArea = builtArea;
+    newProject.facadeTypology = facadeTypology;
+    newProject.roofTypology = roofTypology;
+    newProject.buildingAcronym = buildingAcronym;
+    newProject.unitDirector = unitDirector;
+    if (onlyLibrary !== undefined) {
+      newProject.onlyLibrary = Boolean(onlyLibrary);
     }
 
     return this.projectRepository.create(newProject);
@@ -135,6 +140,7 @@ class ProjectService {
     inspectionObjective,
     inspectionDate,
     inspectionResponsible,
+    isPast,
   }: ICreateInspectionRequest): Promise<IInspection> {
     const project = await this.projectRepository.findById(projectId);
 
@@ -153,6 +159,7 @@ class ProjectService {
       inspectionDate,
       inspectionResponsible,
       images: [],
+      isPast: isPast || false,
     };
 
     const updatedInspections = project.inspections ? [...project.inspections, newInspection] : [newInspection];
@@ -328,6 +335,8 @@ class ProjectService {
     const base64Data = imageData.replace(/^data:image\/jpeg;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, 'base64');
     const newFileName = `${uuidv4()}.jpg`;
+    const hash = crypto.createHash('md5').update(imageBuffer).digest('hex');
+    const size = imageBuffer.length;
 
     const storagePath = `projects/${projectId}/inspections/${inspectionId}/images/${newFileName}`;
     const file = this.bucket.file(storagePath);
@@ -342,6 +351,9 @@ class ProjectService {
     const newImage: IImage = {
       url: publicUrl,
       detections,
+      originalName: newFileName,
+      hash,
+      size,
     };
 
     await this.addImagesToInspection({ projectId, inspectionId, images: [newImage] });
@@ -369,6 +381,8 @@ class ProjectService {
     const imageBuffer = Buffer.from(base64Data, 'base64');
     const fileExtension = path.extname(originalFileName);
     const newFileName = `${uuidv4()}${fileExtension}`;
+    const hash = crypto.createHash('md5').update(imageBuffer).digest('hex');
+    const size = imageBuffer.length;
   
     const storagePath = `projects/${projectId}/inspections/${inspectionId}/images/${newFileName}`;
     const file = this.bucket.file(storagePath);
@@ -383,6 +397,9 @@ class ProjectService {
     const newImage: IImage = {
       url: publicUrl,
       detections,
+      originalName: originalFileName,
+      hash,
+      size,
     };
   
     await this.addImagesToInspection({ projectId, inspectionId, images: [newImage] });
@@ -390,10 +407,9 @@ class ProjectService {
     return newImage;
   }
 
-  public async delete({ projectId, userRole }: { projectId: string; userRole: 'admin' | 'user' }): Promise<void> {
-    if (userRole !== 'admin') {
-      throw new Error('Você não tem permissão para excluir este projeto.');
-    }
+  public async delete({ projectId, userRole: _userRole }: { projectId: string; userRole?: 'admin' | 'user' }): Promise<void> {
+    // Nessa branch sem controle de acesso: qualquer usuário autenticado pode excluir
+
 
     const project = await this.projectRepository.findById(projectId);
 
@@ -407,6 +423,36 @@ class ProjectService {
     });
 
     await this.projectRepository.delete(projectId);
+  }
+
+  public async updateInspection(
+    projectId: string,
+    inspectionId: string,
+    data: {
+      inspectionObjective?: string;
+      inspectionType?: string;
+      inspectionDate?: string;
+      inspectionResponsible?: string;
+    }
+  ): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const updatedInspections = project.inspections?.map(inspection => {
+      if (inspection.id === inspectionId) {
+        return {
+          ...inspection,
+          ...(data.inspectionObjective !== undefined && { inspectionObjective: data.inspectionObjective }),
+          ...(data.inspectionType !== undefined && { inspectionType: data.inspectionType }),
+          ...(data.inspectionDate !== undefined && { inspectionDate: data.inspectionDate }),
+          ...(data.inspectionResponsible !== undefined && { inspectionResponsible: data.inspectionResponsible }),
+        };
+      }
+      return inspection;
+    }) || [];
+
+    const updatedProject = await this.projectRepository.update(projectId, { inspections: updatedInspections });
+    return updatedProject!;
   }
 
   public async deleteInspection(projectId: string, inspectionId: string): Promise<void> {
@@ -433,8 +479,13 @@ class ProjectService {
     const inspection = project.inspections?.find(i => i.id === inspectionId);
     if (!inspection) throw new Error('Inspeção não encontrada.');
 
+    const decodedName = decodeURIComponent(imageName);
     // Filtra o array
-    const updatedImages = inspection.images.filter(img => !img.url.includes(imageName));
+    const updatedImages = inspection.images.filter(img => {
+      const urlMatches = img.url.includes(imageName) || img.url.includes(decodedName);
+      const nameMatches = img.originalName && (img.originalName === imageName || img.originalName === decodedName);
+      return !urlMatches && !nameMatches;
+    });
     
     const updatedInspections = project.inspections?.map(i => {
       if (i.id === inspectionId) {
@@ -491,6 +542,129 @@ class ProjectService {
     });
 
     await this.projectRepository.update(projectId, { inspections: updatedInspections });
+  }
+
+  // --- BIBLIOTECA: PROJETOS CAD ---
+  public async addCadFile(projectId: string, file: ILibraryFile): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const cadFiles = project.cadFiles ? [...project.cadFiles, file] : [file];
+    const updated = await this.projectRepository.update(projectId, { cadFiles });
+    return updated!;
+  }
+
+  public async deleteCadFile(projectId: string, fileId: string): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const cadFiles = project.cadFiles?.filter(f => f.id !== fileId) || [];
+    const updated = await this.projectRepository.update(projectId, { cadFiles });
+    return updated!;
+  }
+
+  // --- BIBLIOTECA: PROJETOS BIM ---
+  public async addBimFile(projectId: string, file: ILibraryFile): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const bimFiles = project.bimFiles ? [...project.bimFiles, file] : [file];
+    const updated = await this.projectRepository.update(projectId, { bimFiles });
+    return updated!;
+  }
+
+  public async deleteBimFile(projectId: string, fileId: string): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const bimFiles = project.bimFiles?.filter(f => f.id !== fileId) || [];
+    const updated = await this.projectRepository.update(projectId, { bimFiles });
+    return updated!;
+  }
+
+  // --- BIBLIOTECA: PRODUTOS FOTOGRAMÉTRICOS (SEPARADOS POR DATA) ---
+  public async createPhotogrammetryBatch(projectId: string, batch: IPhotogrammetryBatch): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const batches = project.photogrammetryProducts ? [...project.photogrammetryProducts, batch] : [batch];
+    const updated = await this.projectRepository.update(projectId, { photogrammetryProducts: batches });
+    return updated!;
+  }
+
+  public async addFilesToPhotogrammetryBatch(projectId: string, batchId: string, files: ILibraryFile[]): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const batches = project.photogrammetryProducts?.map(b => {
+      if (b.id === batchId) {
+        return {
+          ...b,
+          files: [...(b.files || []), ...files]
+        };
+      }
+      return b;
+    }) || [];
+
+    const updated = await this.projectRepository.update(projectId, { photogrammetryProducts: batches });
+    return updated!;
+  }
+
+  public async deletePhotogrammetryBatch(projectId: string, batchId: string): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const batches = project.photogrammetryProducts?.filter(b => b.id !== batchId) || [];
+    const updated = await this.projectRepository.update(projectId, { photogrammetryProducts: batches });
+    return updated!;
+  }
+
+  public async deletePhotogrammetryFile(projectId: string, batchId: string, fileId: string): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const batches = project.photogrammetryProducts?.map(b => {
+      if (b.id === batchId) {
+        return {
+          ...b,
+          files: b.files.filter(f => f.id !== fileId)
+        };
+      }
+      return b;
+    }) || [];
+
+    const updated = await this.projectRepository.update(projectId, { photogrammetryProducts: batches });
+    return updated!;
+  }
+
+  public async updatePhotogrammetryBatch(
+    projectId: string,
+    batchId: string,
+    data: {
+      title?: string;
+      date?: string;
+      responsible?: string;
+      description?: string;
+    }
+  ): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const batches = project.photogrammetryProducts?.map(b => {
+      if (b.id === batchId) {
+        return {
+          ...b,
+          ...(data.title !== undefined && { title: data.title }),
+          ...(data.date !== undefined && { date: data.date }),
+          ...(data.responsible !== undefined && { responsible: data.responsible }),
+          ...(data.description !== undefined && { description: data.description }),
+        };
+      }
+      return b;
+    }) || [];
+
+    const updated = await this.projectRepository.update(projectId, { photogrammetryProducts: batches });
+    return updated!;
   }
 }
 

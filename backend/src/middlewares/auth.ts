@@ -16,15 +16,31 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
     const decodedToken = await auth.verifyIdToken(token);
     req.userId = decodedToken.uid;
     
-    // Busca a role no Firestore
-    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+    // 1. Verifica se a role já veio nos custom claims do token
+    let role = (decodedToken as any).role as 'admin' | 'user' | undefined;
     
-    if (userDoc.exists) {
-      req.userRole = userDoc.data()?.role || 'user';
-    } else {
-      console.warn(`Perfil Firestore não encontrado para UID: ${decodedToken.uid}. Usando role padrão 'user'.`);
-      req.userRole = 'user';
+    // 2. Se não estiver no token, busca no Firestore collection 'users'
+    if (!role) {
+      const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+      if (userDoc.exists) {
+        role = userDoc.data()?.role;
+      }
     }
+
+    // 3. Fallback: se ainda não achou, checa em 'authorized_emails' pelo email do token
+    if (!role && decodedToken.email) {
+      const authEmailDoc = await db.collection('authorized_emails').doc(decodedToken.email.toLowerCase().trim()).get();
+      if (authEmailDoc.exists) {
+        role = authEmailDoc.data()?.role;
+        // Já sincroniza no documento do usuário no Firestore
+        await db.collection('users').doc(decodedToken.uid).set({
+          email: decodedToken.email.toLowerCase().trim(),
+          role: role || 'user',
+        }, { merge: true });
+      }
+    }
+    
+    req.userRole = role || 'user';
     
     next();
   } catch (error) {
@@ -33,12 +49,9 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
   }
 };
 
-export const authorizeRole = (roles: Array<'admin' | 'user'>) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (req.userRole && roles.includes(req.userRole)) {
-      return next();
-    }
-    console.error(`Acesso Negado: Usuário ${req.userId} tem role '${req.userRole}' mas as rotas exigem: ${roles}`);
-    return res.status(403).json({ message: 'Access denied' });
+export const authorizeRole = (_roles: Array<'admin' | 'user'>) => {
+  return (_req: AuthRequest, _res: Response, next: NextFunction) => {
+    // Branch sem controle de acesso: qualquer usuário autenticado pode acessar
+    return next();
   };
 };

@@ -2,11 +2,27 @@ import { db } from '../config/firebase';
 import { IProject } from '../models/IProject';
 
 class ProjectRepository {
-  private collection = db.collection('projects');
+  private get collection() {
+    if (!db) {
+      throw new Error('Firestore database is not initialized. Check your Firebase credentials in .env');
+    }
+    return db.collection('projects');
+  }
 
   public async findAll(): Promise<IProject[]> {
-    const snapshot = await this.collection.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as IProject));
+    try {
+      console.log(`[ProjectRepository] Fetching all projects from collection: projects`);
+      const snapshot = await this.collection.get();
+      console.log(`[ProjectRepository] Snapshot size: ${snapshot.size}`);
+      const projects = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { id: doc.id, ...data } as IProject;
+      });
+      return projects;
+    } catch (error) {
+      console.error('[ProjectRepository] Error fetching projects:', error);
+      throw error;
+    }
   }
 
   public async findByUserId(userId: string): Promise<IProject[]> {
@@ -32,7 +48,13 @@ class ProjectRepository {
 
   public async update(projectId: string, updatedData: Partial<IProject>): Promise<IProject | undefined> {
     const { id, ...data } = updatedData;
-    await this.collection.doc(projectId).update(data as any);
+    const cleanedData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleanedData[key] = value;
+      }
+    }
+    await this.collection.doc(projectId).update(cleanedData);
     return this.findById(projectId);
   }
 }

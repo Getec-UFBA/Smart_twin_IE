@@ -6,10 +6,6 @@ Esta política descreve os procedimentos para o reporte e tratamento de vulnerab
 
 No momento, focamos nossos esforços de correção de segurança na versão principal do projeto.
 
-| Versão | Suporte a Segurança |
-| :--- | :--- |
-| Atual (Main) | ✅ Ativo |
-| Versões Antigas | ❌ Não suportado |
 
 ## Como Reportar uma Vulnerabilidade
 
@@ -17,7 +13,7 @@ Caso identifique uma falha de segurança, pedimos que **não utilize as Issues d
 
 Por favor, envie os detalhes técnicos diretamente para a nossa equipe:
 
-- **E-mail:** getec@gmail.com
+- **E-mail:** getecvant@gmail.com
 - **Assunto:** [SEGURANÇA] Relato de Vulnerabilidade
 
 ### O que incluir no seu relato:

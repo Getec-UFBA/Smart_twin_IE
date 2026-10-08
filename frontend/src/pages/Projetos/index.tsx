@@ -11,25 +11,7 @@ import {
   FaFolderOpen, FaPlus, FaTrashAlt 
 } from 'react-icons/fa';
 import './style.css';
-
-interface IOAE {
-  id: string;
-  name: string;
-  bimModelUrl: string;
-}
-
-interface IProject {
-  id: string;
-  name: string;
-  responsible: string;
-  coverImageUrl: string;
-  modules: {
-    progress: boolean;
-    security: boolean;
-    maintenance: boolean;
-  };
-  oae?: IOAE[];
-}
+import type { IProject } from '../../models/IProject';
 
 const Projetos: React.FC = () => {
   const { t } = useTranslation();
@@ -56,6 +38,9 @@ const Projetos: React.FC = () => {
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [bimModel, setBimModel] = useState<File | null>(null);
   const [modules, setModules] = useState({ progress: false, security: false, maintenance: false });
+  const [buildingYear, setBuildingYear] = useState('');
+  const [builtArea, setBuiltArea] = useState('');
+  const [roofTypology, setRoofTypology] = useState('');
   
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -79,12 +64,17 @@ const Projetos: React.FC = () => {
 
   const filteredProjects = useMemo(() => {
     return allProjects.filter(project => {
+      // Edificações cadastradas pela Biblioteca não aparecem na aba Projetos
+      if (project.onlyLibrary) return false;
+
+      const name = project.name || '';
+      const responsible = project.responsible || '';
       const searchMatch = searchTerm === '' ||
-        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.responsible.toLowerCase().includes(searchTerm.toLowerCase());
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        responsible.toLowerCase().includes(searchTerm.toLowerCase());
 
       const activeFilters = (Object.keys(selectedModules) as Array<keyof typeof selectedModules>).filter(key => selectedModules[key]);
-      const moduleMatch = activeFilters.length === 0 || activeFilters.every(module => project.modules[module]);
+      const moduleMatch = activeFilters.length === 0 || (project.modules && activeFilters.every(module => project.modules[module]));
 
       return searchMatch && moduleMatch;
     });
@@ -112,9 +102,25 @@ const Projetos: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!coverImage || !bimModel) {
-      setError("Capa e Modelo BIM são obrigatórios.");
+    if (!coverImage) {
+      setError("A imagem de capa é obrigatória.");
       return;
+    }
+
+    const allowedCoverExtensions = ['.jpg', '.jpeg', '.png'];
+    const coverExtension = coverImage.name.slice(coverImage.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedCoverExtensions.includes(coverExtension)) {
+      setError(t('projects.error_invalid_cover_format'));
+      return;
+    }
+
+    if (bimModel) {
+      const allowedExtensions = ['.rvt', '.ifc'];
+      const fileExtension = bimModel.name.slice(bimModel.name.lastIndexOf('.')).toLowerCase();
+      if (!allowedExtensions.includes(fileExtension)) {
+        setError(t('projects.error_invalid_bim_format'));
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -126,8 +132,11 @@ const Projetos: React.FC = () => {
       // 1. Upload da Capa
       const coverUrl = await uploadFile(coverImage, `projects/${projectId}/cover/${coverImage.name}`);
       
-      // 2. Upload do Modelo BIM
-      const bimUrl = await uploadFile(bimModel, `projects/${projectId}/bim/${bimModel.name}`);
+      // 2. Upload do Modelo BIM (Opcional)
+      let bimUrl = '';
+      if (bimModel) {
+        bimUrl = await uploadFile(bimModel, `projects/${projectId}/bim/${bimModel.name}`);
+      }
 
       // 3. Salva no Backend
       const response = await api.post('/projects', {
@@ -139,7 +148,10 @@ const Projetos: React.FC = () => {
         bimModelUrl: bimUrl,
         modules: JSON.stringify(modules),
         oaeData: JSON.stringify([]),
-        oaeBimModelUrls: []
+        oaeBimModelUrls: [],
+        buildingYear,
+        builtArea,
+        roofTypology
       });
 
       setAllProjects([...allProjects, response.data]);
@@ -161,6 +173,9 @@ const Projetos: React.FC = () => {
     setResponsible('');
     setCoverImage(null);
     setBimModel(null);
+    setBuildingYear('');
+    setBuiltArea('');
+    setRoofTypology('');
     setModules({ progress: false, security: false, maintenance: false });
   };
 
@@ -185,7 +200,7 @@ const Projetos: React.FC = () => {
             <h1 className="page-header-title mb-0">{t('projects.title')}</h1>
             <p className="text-muted mt-2 mb-0">{t('projects.subtitle')}</p>
           </div>
-          {user?.role === 'admin' && (
+          {user && (
             <Button className="btn-primary d-flex align-items-center gap-2" onClick={() => setShowCreateModal(true)}>
               <FaPlus /> {t('projects.new_project')}
             </Button>
@@ -258,7 +273,7 @@ const Projetos: React.FC = () => {
                     >
                       {t('projects.open_project')}
                     </Button>
-                    {user?.role === 'admin' && (
+                    {user && (
                       <Button 
                         variant="outline-danger" 
                         onClick={() => {
@@ -320,10 +335,74 @@ const Projetos: React.FC = () => {
                 <Form.Group className="mb-3"><Form.Label>{t('projects.modal_address')}</Form.Label><Form.Control value={address} onChange={e => setAddress(e.target.value)} disabled={isUploading} /></Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_cover_image')}</Form.Label><Form.Control type="file" required onChange={e => setCoverImage((e.target as any).files ? (e.target as any).files[0] : null)} disabled={isUploading} /></Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>{t('projects.modal_cover_image')}</Form.Label>
+                  <Form.Control 
+                    type="file" 
+                    required 
+                    accept="image/png, image/jpeg, image/jpg"
+                    onChange={e => setCoverImage((e.target as any).files ? (e.target as any).files[0] : null)} 
+                    disabled={isUploading} 
+                  />
+                  <Form.Text className="text-muted d-block mt-1">
+                    {t('projects.modal_cover_image_help')}
+                  </Form.Text>
+                </Form.Group>
               </Col>
               <Col md={6}>
-                <Form.Group className="mb-3"><Form.Label>{t('projects.modal_bim_model')}</Form.Label><Form.Control type="file" onChange={e => setBimModel((e.target as any).files ? (e.target as any).files[0] : null)} disabled={isUploading} /></Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>{t('projects.modal_bim_model')}</Form.Label>
+                  <Form.Control 
+                    type="file" 
+                    accept=".rvt,.ifc"
+                    onChange={e => setBimModel((e.target as any).files ? (e.target as any).files[0] : null)} 
+                    disabled={isUploading} 
+                  />
+                  <Form.Text className="text-muted d-block mt-1">
+                    {t('projects.modal_bim_model_help')}
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>{t('projects.modal_building_year')}</Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    placeholder="Ex: 2020" 
+                    value={buildingYear} 
+                    onChange={e => setBuildingYear(e.target.value)} 
+                    disabled={isUploading} 
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>{t('projects.modal_built_area')}</Form.Label>
+                  <Form.Control 
+                    type="text" 
+                    placeholder="Ex: 150" 
+                    value={builtArea} 
+                    onChange={e => setBuiltArea(e.target.value)} 
+                    disabled={isUploading} 
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>{t('projects.modal_roof_typology')}</Form.Label>
+                  <Form.Select 
+                    value={roofTypology} 
+                    onChange={e => setRoofTypology(e.target.value)} 
+                    disabled={isUploading}
+                  >
+                    <option value="">{t('projects.modal_select_roof')}</option>
+                    <option value="Fibrocimento">Fibrocimento</option>
+                    <option value="Cerâmico">Cerâmico</option>
+                    <option value="Concreto">Concreto</option>
+                    <option value="Metálico">Metálico</option>
+                    <option value="misto">misto</option>
+                  </Form.Select>
+                </Form.Group>
               </Col>
             </Row>
             {error && <p className="text-danger mt-2">{error}</p>}

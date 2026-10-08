@@ -26,7 +26,7 @@ const Home: React.FC = () => {
             </Col>
             <Col lg={8}>
               <h1 className="platform-title">
-                SMART <span className="text-green">TWIN</span>-I<span className="text-green">E</span>
+                SMART <span className="text-green">TWIN</span>-IE
               </h1>
               <h2 className="subtitle-home">{t('home.platform_subtitle')}</h2>
             </Col>
@@ -36,7 +36,6 @@ const Home: React.FC = () => {
 
       <Container>
         {/* Funcionalidades */}
-        <h2 className="section-title text-center">{t('home.tech_section_title')}</h2>
         <Row className="g-4 mb-5">
           <Col lg={3} md={6}>
             <Card className="functionality-card border-0">

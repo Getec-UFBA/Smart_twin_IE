@@ -114,3 +114,25 @@
 body.dark .sidebar .nav-link.active {
   background-color: rgba(16, 185, 129, 0.15);
 }
+
+@media (max-width: 768px) {
+  .sidebar {
+    top: 0;
+    height: 100vh;
+    padding-top: 80px;
+    z-index: 1050;
+    width: 280px;
+    max-width: 85vw;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar.closed {
+    transform: translateX(-100%);
+    width: 280px;
+  }
+}
+
