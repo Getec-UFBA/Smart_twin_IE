@@ -899,6 +899,33 @@ class ProjectController {
     }
   }
 
+  // --- BIBLIOTECA: DOCUMENTOS EXTRA CONTROLLER ---
+  public async addExtraFile(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId } = req.params;
+    const { file } = req.body;
+    if (!projectId || !file) {
+      return res.status(400).json({ error: 'ID do projeto e dados do documento extra são obrigatórios.' });
+    }
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.addExtraFile(projectId, file);
+      return res.status(201).json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
+  public async deleteExtraFile(req: AuthRequest, res: Response): Promise<Response> {
+    const { projectId, fileId } = req.params;
+    const projectService = new ProjectService();
+    try {
+      const updated = await projectService.deleteExtraFile(projectId, fileId);
+      return res.json(updated);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+
   // --- BIBLIOTECA: PRODUTOS FOTOGRAMÉTRICOS CONTROLLER ---
   public async createPhotogrammetryBatch(req: AuthRequest, res: Response): Promise<Response> {
     const { projectId } = req.params;

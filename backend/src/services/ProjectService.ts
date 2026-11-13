@@ -582,6 +582,25 @@ class ProjectService {
     return updated!;
   }
 
+  // --- BIBLIOTECA: DOCUMENTOS EXTRA ---
+  public async addExtraFile(projectId: string, file: ILibraryFile): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const extraFiles = project.extraFiles ? [...project.extraFiles, file] : [file];
+    const updated = await this.projectRepository.update(projectId, { extraFiles });
+    return updated!;
+  }
+
+  public async deleteExtraFile(projectId: string, fileId: string): Promise<IProject> {
+    const project = await this.projectRepository.findById(projectId);
+    if (!project) throw new Error('Projeto não encontrado.');
+
+    const extraFiles = project.extraFiles?.filter(f => f.id !== fileId) || [];
+    const updated = await this.projectRepository.update(projectId, { extraFiles });
+    return updated!;
+  }
+
   // --- BIBLIOTECA: PRODUTOS FOTOGRAMÉTRICOS (SEPARADOS POR DATA) ---
   public async createPhotogrammetryBatch(projectId: string, batch: IPhotogrammetryBatch): Promise<IProject> {
     const project = await this.projectRepository.findById(projectId);

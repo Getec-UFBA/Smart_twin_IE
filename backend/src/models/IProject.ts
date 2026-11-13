@@ -84,6 +84,7 @@ export interface IProject {
   inspections?: IInspection[];
   cadFiles?: ILibraryFile[];
   bimFiles?: ILibraryFile[];
+  extraFiles?: ILibraryFile[];
   photogrammetryProducts?: IPhotogrammetryBatch[];
   onlyLibrary?: boolean;
 }
