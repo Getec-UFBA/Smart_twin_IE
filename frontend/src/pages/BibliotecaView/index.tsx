@@ -35,7 +35,7 @@ import './style.css';
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 
-type ActiveTabType = 'inspections' | 'cad' | 'bim' | 'photogrammetry';
+type ActiveTabType = 'inspections' | 'cad' | 'bim' | 'photogrammetry' | 'extra';
 
 const BibliotecaView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -90,6 +90,13 @@ const BibliotecaView: React.FC = () => {
   const [showBimModal, setShowBimModal] = useState(false);
   const [uploadingBim, setUploadingBim] = useState(false);
   const [bimToDelete, setBimToDelete] = useState<ILibraryFile | null>(null);
+
+  // --- PILAR 5: DOCUMENTOS EXTRA ---
+  const extraInputRef = useRef<HTMLInputElement>(null);
+  const [showExtraModal, setShowExtraModal] = useState(false);
+  const [extraCategory, setExtraCategory] = useState('Geral');
+  const [uploadingExtra, setUploadingExtra] = useState(false);
+  const [extraToDelete, setExtraToDelete] = useState<ILibraryFile | null>(null);
 
   // --- PILAR 4: PRODUTOS FOTOGRAMÉTRICOS (SEPARADOS POR DATA) ---
   const [activeBatch, setActiveBatch] = useState<IPhotogrammetryBatch | null>(null);
@@ -494,6 +501,56 @@ const BibliotecaView: React.FC = () => {
   };
 
   // ==========================================
+  // HANDLERS: PILAR 5 - DOCUMENTOS EXTRA
+  // ==========================================
+  const handleExtraUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !project) return;
+    setUploadingExtra(true);
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const fileExt = file.name.split('.').pop()?.toUpperCase() || 'DOC';
+        const uniqueName = `${generateId()}_${file.name}`;
+        const storagePath = `projects/${project.id}/library/extra/${uniqueName}`;
+        const storageReference = ref(storage, storagePath);
+        const snapshot = await uploadBytes(storageReference, file);
+        const downloadUrl = await getDownloadURL(snapshot.ref);
+
+        const newExtraFile: ILibraryFile = {
+          id: generateId(),
+          name: file.name,
+          url: downloadUrl,
+          size: file.size,
+          uploadedAt: new Date().toLocaleDateString(),
+          format: fileExt,
+          category: extraCategory,
+        };
+
+        await api.post(`/projects/${project.id}/library/extra`, { file: newExtraFile });
+      } catch (err) {
+        console.error('Erro ao enviar documento extra:', err);
+      }
+    }
+
+    setUploadingExtra(false);
+    setShowExtraModal(false);
+    if (extraInputRef.current) extraInputRef.current.value = '';
+    await fetchProject();
+  };
+
+  const confirmDeleteExtra = async () => {
+    if (!project || !extraToDelete) return;
+    try {
+      await api.delete(`/projects/${project.id}/library/extra/${extraToDelete.id}`);
+      setExtraToDelete(null);
+      await fetchProject();
+    } catch (err) {
+      alert('Erro ao excluir documento extra.');
+    }
+  };
+
+  // ==========================================
   // HANDLERS: PILAR 4 - PRODUTOS FOTOGRAMÉTRICOS
   // ==========================================
   const handleCreateBatch = async (e: React.FormEvent) => {
@@ -763,6 +820,21 @@ const BibliotecaView: React.FC = () => {
               </div>
               <Badge bg="secondary" className="ms-auto pill-count">
                 {allPhotogrammetryBatches.length}
+              </Badge>
+            </button>
+
+            {/* PILAR 5 */}
+            <button 
+              className={`pillar-btn ${activeTab === 'extra' ? 'active' : ''}`}
+              onClick={() => setActiveTab('extra')}
+            >
+              <div className="pillar-icon"><FaFileAlt style={{ color: '#10b981' }} /></div>
+              <div className="pillar-text">
+                <span className="pillar-title">Documentos extra</span>
+                <span className="pillar-sub">Laudos, Relatórios e Anexos</span>
+              </div>
+              <Badge bg="secondary" className="ms-auto pill-count">
+                {project.extraFiles?.length || 0}
               </Badge>
             </button>
           </div>
@@ -1359,6 +1431,87 @@ const BibliotecaView: React.FC = () => {
         )}
 
         {/* ========================================================= */}
+        {/* CONTEÚDO DO PILAR 5: DOCUMENTOS EXTRA                     */}
+        {/* ========================================================= */}
+        {activeTab === 'extra' && (
+          <div className="tab-pane-content animate-fade-in">
+            <div className="section-card">
+              <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div>
+                  <h3 className="fw-bold mb-1">Documentos Extra da Edificação</h3>
+                  <p className="text-muted mb-0">Laudos técnicos, memoriais descritivos, alvarás, relatórios complementares e planilhas</p>
+                </div>
+                <Button variant="primary" onClick={() => setShowExtraModal(true)}>
+                  <FaPlus className="me-2" /> Adicionar Documento Extra
+                </Button>
+              </div>
+
+              {!project.extraFiles || project.extraFiles.length === 0 ? (
+                <div className="text-center py-5 border rounded-4 bg-light">
+                  <FaFileAlt className="fs-1 mb-3" style={{ color: '#10b981', opacity: 0.7 }} />
+                  <h4>Nenhum documento extra cadastrado</h4>
+                  <p className="text-muted mb-3">Armazene arquivos complementares, laudos, relatórios externos e memoriais descritivos.</p>
+                  <Button variant="outline-primary" onClick={() => setShowExtraModal(true)}>
+                    <FaCloudUploadAlt className="me-2" /> Fazer Upload de Documento
+                  </Button>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="bib-images-table">
+                    <thead>
+                      <tr>
+                        <th>Formato</th>
+                        <th>Nome do Documento</th>
+                        <th>Categoria / Tipo</th>
+                        <th>Tamanho</th>
+                        <th>Data de Envio</th>
+                        <th className="text-end">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {project.extraFiles.map((file) => (
+                        <tr key={file.id}>
+                          <td>
+                            <Badge bg="success" className="px-2 py-1">{file.format || 'DOC'}</Badge>
+                          </td>
+                          <td className="fw-semibold">
+                            <FaFileAlt className="me-2" style={{ color: '#10b981' }} /> {file.name}
+                          </td>
+                          <td>
+                            <Badge bg="info" className="bg-opacity-10 text-info border border-info border-opacity-25">
+                              {file.category || 'Geral'}
+                            </Badge>
+                          </td>
+                          <td className="text-muted">{formatFileSize(file.size) || '---'}</td>
+                          <td className="text-muted">{file.uploadedAt}</td>
+                          <td className="text-end">
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm" 
+                              className="me-2"
+                              onClick={() => handleDownloadFile(file.url, file.name)}
+                            >
+                              <FaDownload className="me-1" style={{ color: '#10b981' }} /> Baixar
+                            </Button>
+                            <Button 
+                              variant="outline-danger" 
+                              size="sm" 
+                              onClick={() => setExtraToDelete(file)}
+                            >
+                              <FaTrashAlt />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
         {/* MODAIS DE APOIO                                            */}
         {/* ========================================================= */}
 
@@ -1494,6 +1647,48 @@ const BibliotecaView: React.FC = () => {
           </Modal.Footer>
         </Modal>
 
+        {/* MODAL UPLOAD DOCUMENTO EXTRA */}
+        <Modal show={showExtraModal} onHide={() => setShowExtraModal(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title className="fw-bold">
+              <FaFileAlt className="me-2" style={{ color: '#10b981' }} /> Adicionar Documento Extra
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Categoria / Tipo de Documento</Form.Label>
+              <Form.Select value={extraCategory} onChange={(e) => setExtraCategory(e.target.value)}>
+                <option value="Laudo Técnico">Laudo Técnico</option>
+                <option value="Memorial Descritivo">Memorial Descritivo</option>
+                <option value="Alvará / Licença">Alvará / Licença</option>
+                <option value="Relatório Complementar">Relatório Complementar</option>
+                <option value="Planilha Orçamentária">Planilha Orçamentária</option>
+                <option value="Especificação Técnica">Especificação Técnica</option>
+                <option value="Geral">Geral</option>
+              </Form.Select>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Selecione os Arquivos (.PDF, .DOCX, .XLSX, etc.)</Form.Label>
+              <Form.Control 
+                type="file" 
+                ref={extraInputRef}
+                multiple 
+                onChange={(e: any) => handleExtraUpload(e.target.files)} 
+              />
+            </Form.Group>
+            {uploadingExtra && (
+              <div className="text-center py-2" style={{ color: '#10b981' }}>
+                <div className="spinner-border spinner-border-sm me-2" style={{ color: '#10b981' }}></div>
+                Fazendo upload do documento...
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowExtraModal(false)}>Fechar</Button>
+          </Modal.Footer>
+        </Modal>
+
         {/* MODAL CRIAÇÃO DE LOTE FOTOGRAMÉTRICO */}
         <Modal show={showCreateBatchModal} onHide={() => setShowCreateBatchModal(false)} centered>
           <Form onSubmit={handleCreateBatch}>
@@ -1583,6 +1778,15 @@ const BibliotecaView: React.FC = () => {
           <Modal.Footer>
             <Button variant="secondary" size="sm" onClick={() => setBimToDelete(null)}>Cancelar</Button>
             <Button variant="danger" size="sm" onClick={confirmDeleteBim}>Excluir</Button>
+          </Modal.Footer>
+        </Modal>
+
+        <Modal show={!!extraToDelete} onHide={() => setExtraToDelete(null)} centered size="sm">
+          <Modal.Header closeButton><Modal.Title className="fs-6">Excluir Documento Extra</Modal.Title></Modal.Header>
+          <Modal.Body>Deseja excluir {extraToDelete?.name}?</Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" size="sm" onClick={() => setExtraToDelete(null)}>Cancelar</Button>
+            <Button variant="danger" size="sm" onClick={confirmDeleteExtra}>Excluir</Button>
           </Modal.Footer>
         </Modal>
 

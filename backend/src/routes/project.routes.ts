@@ -131,6 +131,10 @@ projectRouter.delete('/:projectId/library/cad/:fileId', projectController.delete
 projectRouter.post('/:projectId/library/bim', projectController.addBimFile);
 projectRouter.delete('/:projectId/library/bim/:fileId', projectController.deleteBimFile);
 
+// --- ROTAS BIBLIOTECA: DOCUMENTOS EXTRA ---
+projectRouter.post('/:projectId/library/extra', projectController.addExtraFile);
+projectRouter.delete('/:projectId/library/extra/:fileId', projectController.deleteExtraFile);
+
 // --- ROTAS BIBLIOTECA: PRODUTOS FOTOGRAMÉTRICOS (SEPARADOS POR DATA) ---
 projectRouter.post('/:projectId/library/photogrammetry', projectController.createPhotogrammetryBatch);
 projectRouter.put('/:projectId/library/photogrammetry/:batchId', projectController.updatePhotogrammetryBatch);
