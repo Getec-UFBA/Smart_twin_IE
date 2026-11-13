@@ -145,6 +145,28 @@ start.bat
 
 ---
 
+## Testes Automatizados e CI/CD
+
+O repositório conta com uma suíte de testes unitários para todas as camadas e uma esteira de Integração Contínua (CI) configurada via **GitHub Actions** (`.github/workflows/ci.yml`).
+
+Para executar a suíte completa de testes localmente de forma simples:
+
+```bash
+chmod +x run_tests.sh
+./run_tests.sh
+```
+
+Opções disponíveis no script:
+* `./run_tests.sh --backend` — Executa apenas os testes unitários da API Node.js (Vitest).
+* `./run_tests.sh --frontend` — Executa apenas os testes unitários da aplicação React (Vitest + Testing Library).
+* `./run_tests.sh --ai` — Executa os testes do serviço de visão computacional (Pytest).
+* `./run_tests.sh --deploy` — Valida sintaxe de scripts bash, integridade do `firebase.json` e regras de segurança (`firestore.rules` e `storage.rules`).
+* `./run_tests.sh --docker` — Valida a compilação da imagem Docker do `ai-service`.
+
+Para detalhes completos da cobertura e arquitetura da esteira de CI, consulte o manual [`docs/testes_e_ci.md`](docs/testes_e_ci.md).
+
+---
+
 ## Sequencia de Deploy para Producao
 
 Ao atualizar a plataforma ou subir novas melhorias:
@@ -176,6 +198,7 @@ A pasta [`docs/`](docs/) reune guias detalhados para administradores, desenvolve
 3. **[`docs/api.md`](docs/api.md):** Contrato completo de todos os endpoints REST (Backend e IA), parametros de requisicao, cabecalhos de autenticacao e respostas JSON.
 4. **[`docs/fluxo_inspecao.md`](docs/fluxo_inspecao.md):** Ciclo de vida ponta a ponta da inspecao (upload do drone, fatiamento matricial com IA, georreferenciamento GDAL, revisao humana e relatorio PDF).
 5. **[`docs/banco_de_dados.md`](docs/banco_de_dados.md):** Dicionario de dados e modelagem NoSQL do Cloud Firestore (`projects`, `users`, `authorized_emails`), regras de seguranca e estrategia de backup.
+6. **[`docs/testes_e_ci.md`](docs/testes_e_ci.md):** Guia de testes unitários, validações pré-deploy, integridade Docker e fluxo de CI no GitHub Actions.
 
 ---
 
