@@ -9,7 +9,7 @@ git config --global --add safe.directory "*" 2>/dev/null || true
 
 # git LFS
 if ! command -v git-lfs &>/dev/null; then
-    echo "📦 Instalando Git LFS..."
+    echo " Instalando Git LFS..."
     if command -v apt-get &>/dev/null; then
         sudo apt-get update && sudo apt-get install -y git-lfs 2>/dev/null || apt-get update && apt-get install -y git-lfs 2>/dev/null || true
     fi
@@ -22,7 +22,7 @@ if ! command -v git-lfs &>/dev/null; then
 fi
 
 echo "=========================================================="
-echo "🚀 Configurando o ambiente de desenvolvimento Smart Twin IE"
+echo " Configurando o ambiente de desenvolvimento Smart Twin IE"
 echo "=========================================================="
 
 # instalar dep
@@ -52,7 +52,7 @@ fi
 # dep node raiz
 if [ -f "package.json" ]; then
     if [ ! -d "node_modules" ]; then
-        echo "[2/4] 📦 Instalando dependências Node.js (Raiz)..."
+        echo "[2/4] Instalando dependências Node.js (Raiz)..."
         npm install
     else
         echo "[2/4] node_modules da raiz já existe."
@@ -62,7 +62,7 @@ fi
 # node back
 if [ -f "backend/package.json" ]; then
     if [ ! -d "backend/node_modules" ]; then
-        echo "[3/4] 📦 Instalando dependências Node.js (Backend)..."
+        echo "[3/4]  Instalando dependências Node.js (Backend)..."
         (cd backend && npm install && npx puppeteer browsers install chrome 2>/dev/null || true)
     else
         echo "[3/4]  backend/node_modules já existe."
@@ -72,14 +72,13 @@ fi
 # 4. node front
 if [ -f "frontend/package.json" ]; then
     if [ ! -d "frontend/node_modules" ]; then
-        echo "[4/4] 📦 Instalando dependências Node.js (Frontend)..."
+        echo "[4/4] Instalando dependências Node.js (Frontend)..."
         (cd frontend && npm install)
     else
         echo "[4/4]  frontend/node_modules já existe."
     fi
 fi
 
-echo "=========================================================="
-echo "Ambiente configurado com sucesso!"
-echo " Execute './start.sh' para iniciar todos os serviços."
-echo "=========================================================="
+echo "Ambiente configurado"
+
+
